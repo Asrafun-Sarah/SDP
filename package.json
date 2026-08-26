@@ -1,0 +1,13 @@
+{
+  "name": "projectforge",
+  "version": "1.0.0",
+  "description": "ProjectForge Workspace - Frontend & Backend",
+  "scripts": {
+    "start": "npm start --prefix backend",
+    "dev": "npm start --prefix backend",
+    "backend": "npm start --prefix backend"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
