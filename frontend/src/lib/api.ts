@@ -21,44 +21,50 @@ export interface Project {
   title: string;
   description: string;
   category: string;
-  technologies: string;
-  github_link?: string;
-  demo_link?: string;
-  author_id: number;
-  author: ProjectAuthor;
+
+  // Backend uses tech_stack
+  tech_stack: string;
+
+  // Backend uses these names
+  github_url?: string;
+  demo_url?: string;
+
+  user_id: number;
+
+  // Some API responses may include the author/user
+  author?: ProjectAuthor;
+  user?: ProjectAuthor;
+
   created_at: string;
 }
 
 export interface HelpRequest {
   id: number;
-  project_id: number;
-  requester_id: number;
-  recipient_id: number;
-  message: string;
+  title: string;
+  description: string;
+  category: string;
   status: "Pending" | "Accepted" | "Declined";
+
+  project_id: number;
+  user_id: number;
+
+  helper_id?: number;
+
   created_at: string;
-  project_title?: string;
-  category?: string;
-  author?: string;
+
   helper?: {
     id: number;
     full_name: string;
     email: string;
     department: string;
   };
-  requester: {
+
+  user?: {
     id: number;
     full_name: string;
     email: string;
     department: string;
   };
-  recipient: {
-    id: number;
-    full_name: string;
-    email: string;
-    department: string;
-  };
-  helper_id?: number;
 }
 
 // Deployed FastAPI backend
@@ -74,7 +80,13 @@ export async function apiFetch<T>(
     ...options,
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+
+      ...(token
+        ? {
+            Authorization: `Bearer ${token}`,
+          }
+        : {}),
+
       ...(options.headers || {}),
     },
   });
@@ -84,14 +96,24 @@ export async function apiFetch<T>(
 
     try {
       const errorData = await response.json();
-      message = errorData.message || errorData.detail || message;
-    } catch {}
+
+      message =
+        errorData.detail ||
+        errorData.message ||
+        message;
+    } catch {
+      // Ignore JSON parsing errors
+    }
 
     throw new Error(message);
   }
 
   return response.json() as Promise<T>;
 }
+
+// =========================
+// TOKEN MANAGEMENT
+// =========================
 
 export function setToken(token: string) {
   if (typeof window !== "undefined") {
@@ -113,14 +135,69 @@ export function removeToken() {
   }
 }
 
-export async function getProjects(): Promise<Project[]> {
-  return apiFetch<Project[]>("/projects");
+// =========================
+// PROJECT API
+// =========================
+
+export async function getProjects(
+  category?: string,
+  search?: string
+): Promise<Project[]> {
+  const params = new URLSearchParams();
+
+  if (category && category !== "All") {
+    params.set("category", category);
+  }
+
+  if (search) {
+    params.set("search", search);
+  }
+
+  const query = params.toString();
+
+  return apiFetch<Project[]>(
+    `/api/projects${query ? `?${query}` : ""}`
+  );
 }
 
-export async function getHelpRequests(): Promise<HelpRequest[]> {
-  return apiFetch<HelpRequest[]>("/helpRequests");
+export async function getProject(
+  projectId: number
+): Promise<Project> {
+  return apiFetch<Project>(
+    `/api/projects/${projectId}`
+  );
 }
+
+export async function getMyProjects(): Promise<Project[]> {
+  return apiFetch<Project[]>(
+    "/api/projects/my-projects"
+  );
+}
+
+// =========================
+// HELP REQUEST API
+// =========================
+
+export async function getHelpRequests(
+  category?: string
+): Promise<HelpRequest[]> {
+  const params = new URLSearchParams();
+
+  if (category && category !== "All") {
+    params.set("category", category);
+  }
+
+  const query = params.toString();
+
+  return apiFetch<HelpRequest[]>(
+    `/api/help-requests${query ? `?${query}` : ""}`
+  );
+}
+
+// =========================
+// AUTH API
+// =========================
 
 export async function getCurrentUser(): Promise<User> {
-  return apiFetch<User>("/auth/me");
+  return apiFetch<User>("/api/auth/me");
 }
