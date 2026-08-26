@@ -3,12 +3,23 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getToken, removeToken, apiFetch, User } from "@/lib/api";
-import { Cpu, Rocket, HelpCircle, LogIn, LogOut, User as UserIcon, PlusCircle, LayoutDashboard, FolderGit2 } from "lucide-react";
+import { apiFetch, getToken, removeToken, User } from "@/lib/api";
+import {
+  Cpu,
+  Rocket,
+  HelpCircle,
+  LogIn,
+  LogOut,
+  User as UserIcon,
+  PlusCircle,
+  LayoutDashboard,
+  FolderGit2,
+} from "lucide-react";
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
+
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
@@ -17,14 +28,16 @@ export default function Navbar() {
 
   async function checkUser() {
     const token = getToken();
+
     if (!token) {
       setUser(null);
       return;
     }
+
     try {
-      const userData = await apiFetch("/api/auth/me");
+      const userData = await apiFetch<User>("/auth/me");
       setUser(userData);
-    } catch (err) {
+    } catch {
       removeToken();
       setUser(null);
     }
@@ -42,21 +55,28 @@ export default function Navbar() {
   ];
 
   if (user) {
-    navLinks.push({ name: "My Projects", href: "/my-projects", icon: FolderGit2 });
+    navLinks.push({
+      name: "My Projects",
+      href: "/my-projects",
+      icon: FolderGit2,
+    });
   }
 
   return (
     <header className="sticky top-0 z-50 bg-slate-900 border-b border-slate-800 text-slate-100 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
+
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3">
             <div className="p-2 bg-blue-600 rounded-lg text-white">
               <Cpu className="w-5 h-5" />
             </div>
+
             <span className="font-bold text-lg tracking-tight text-white">
               ProjectForge
             </span>
+
             <span className="hidden sm:inline-block px-2 py-0.5 text-xs font-semibold bg-slate-800 text-blue-400 border border-slate-700 rounded">
               University Project Hub
             </span>
@@ -67,6 +87,7 @@ export default function Navbar() {
             {navLinks.map((link) => {
               const Icon = link.icon;
               const isActive = pathname === link.href;
+
               return (
                 <Link
                   key={link.href}
@@ -119,7 +140,10 @@ export default function Navbar() {
                   title="My Profile"
                 >
                   <UserIcon className="w-4 h-4" />
-                  <span className="hidden sm:inline">{user.name.split(" ")[0]}</span>
+
+                  <span className="hidden sm:inline">
+                    {user.full_name.split(" ")[0]}
+                  </span>
                 </Link>
 
                 <button
@@ -139,9 +163,10 @@ export default function Navbar() {
                   <LogIn className="w-4 h-4" />
                   <span>Sign In</span>
                 </Link>
+
                 <Link
                   href="/register"
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors shadow-sm"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-colors shadow-sm"
                 >
                   <UserIcon className="w-4 h-4" />
                   <span>Register</span>
@@ -149,6 +174,7 @@ export default function Navbar() {
               </div>
             )}
           </div>
+
         </div>
       </div>
     </header>
