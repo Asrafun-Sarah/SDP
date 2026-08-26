@@ -61,7 +61,8 @@ export interface HelpRequest {
   helper_id?: number;
 }
 
-const API_URL = "/api";
+// Deployed FastAPI backend
+const API_URL = "https://projectforge-jlhb.onrender.com";
 
 export async function apiFetch<T>(
   endpoint: string,
@@ -83,7 +84,7 @@ export async function apiFetch<T>(
 
     try {
       const errorData = await response.json();
-      message = errorData.message || message;
+      message = errorData.message || errorData.detail || message;
     } catch {}
 
     throw new Error(message);
