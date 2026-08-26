@@ -1,181 +1,428 @@
 "use client";
 
-import React, { useState } from "react";
-import Link from "next/link";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth-context";
-import { apiFetch } from "@/lib/api";
-import { UserPlus, Cpu, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { UserPlus, Mail, Lock, Building2, User } from "lucide-react";
+
+import { apiFetch, setToken, User as UserType } from "@/lib/api";
+
+interface RegisterResponse {
+  access_token: string;
+  token_type: string;
+  user: UserType;
+}
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { login } = useAuth();
 
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [department, setDepartment] = useState("Computer Science");
-  const [password, setPassword] = useState("");
-  const [bio, setBio] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    department: "",
+    bio: "",
+  });
+
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  function handleChange(
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) {
+    const { name, value } = e.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  }
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError(null);
+
+    setError("");
     setLoading(true);
 
     try {
-      const res = await apiFetch<{ access_token: string; user: any }>("/auth/register", {
+      const data = await apiFetch<RegisterResponse>("/auth/register", {
         method: "POST",
         body: JSON.stringify({
-          full_name: fullName,
-          email,
-          department,
-          password,
-          bio: bio.trim() || undefined,
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          department: formData.department,
+          bio: formData.bio || undefined,
         }),
       });
 
-      login(res.access_token, res.user);
+      setToken(data.access_token);
+
       router.push("/dashboard");
     } catch (err: any) {
-      setError(err.message || "Registration failed. Please check your information.");
+      console.error("Registration error:", err);
+
+      setError(
+        err?.message ||
+          "Registration failed. Please check your information and try again."
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="container" style={{ padding: "4rem 1.5rem", maxWidth: "520px" }}>
-      <div className="glass-card" style={{ padding: "2.5rem" }}>
-        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <div style={{
-            width: "3rem",
-            height: "3rem",
-            borderRadius: "12px",
-            background: "linear-gradient(135deg, #0284c7 0%, #4f46e5 100%)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            margin: "0 auto 1rem auto"
-          }}>
-            <UserPlus size={24} color="#ffffff" />
-          </div>
-          <h1 style={{ fontSize: "1.75rem", fontWeight: 800 }}>Student Registration</h1>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", marginTop: "0.25rem" }}>
-            Create an account to upload projects & request guidance
-          </p>
-        </div>
-
-        {error && (
-          <div style={{
-            background: "rgba(244, 63, 94, 0.12)",
-            border: "1px solid rgba(244, 63, 94, 0.3)",
-            color: "#fb7185",
-            padding: "0.75rem 1rem",
-            borderRadius: "8px",
-            fontSize: "0.875rem",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            marginBottom: "1.5rem"
-          }}>
-            <AlertCircle size={16} />
-            <span>{error}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-          <div>
-            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "0.4rem" }}>
-              Full Name *
-            </label>
-            <input
-              type="text"
-              required
-              className="input-field"
-              placeholder="e.g. Alex Chen"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "0.4rem" }}>
-              University Email *
-            </label>
-            <input
-              type="email"
-              required
-              className="input-field"
-              placeholder="alex.chen@university.edu"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "0.4rem" }}>
-              Department *
-            </label>
-            <select
-              className="input-field"
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-            >
-              <option value="Computer Science">Computer Science</option>
-              <option value="Software Engineering">Software Engineering</option>
-              <option value="Electrical Engineering">Electrical Engineering</option>
-              <option value="Robotics & Mechatronics">Robotics & Mechatronics</option>
-              <option value="Mechanical Engineering">Mechanical Engineering</option>
-              <option value="Civil Engineering">Civil Engineering</option>
-            </select>
-          </div>
-
-          <div>
-            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "0.4rem" }}>
-              Password *
-            </label>
-            <input
-              type="password"
-              required
-              minLength={6}
-              className="input-field"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "0.4rem" }}>
-              Short Bio (Optional)
-            </label>
-            <textarea
-              className="input-field"
-              rows={3}
-              placeholder="Tell peers about your engineering interests, microcontrollers, or technologies you love..."
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              style={{ resize: "vertical" }}
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn-primary"
-            style={{ width: "100%", justifyContent: "center", padding: "0.75rem", marginTop: "0.5rem" }}
+    <div className="container" style={{ padding: "4rem 1.5rem" }}>
+      <div
+        style={{
+          maxWidth: "520px",
+          margin: "0 auto",
+        }}
+      >
+        <div
+          className="glass-card"
+          style={{
+            padding: "2rem",
+          }}
+        >
+          {/* Header */}
+          <div
+            style={{
+              textAlign: "center",
+              marginBottom: "2rem",
+            }}
           >
-            {loading ? "Creating Account..." : "Complete Registration"}
-          </button>
-        </form>
+            <div
+              style={{
+                width: "56px",
+                height: "56px",
+                margin: "0 auto 1rem",
+                borderRadius: "14px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background:
+                  "linear-gradient(135deg, #2563eb 0%, #06b6d4 100%)",
+                color: "white",
+              }}
+            >
+              <UserPlus size={28} />
+            </div>
 
-        <div style={{ textAlign: "center", marginTop: "1.5rem", fontSize: "0.875rem", color: "var(--text-muted)" }}>
-          Already registered?{" "}
-          <Link href="/login" style={{ color: "var(--primary-cyan)", fontWeight: 600 }}>
-            Log In here
-          </Link>
+            <h1
+              style={{
+                fontSize: "1.8rem",
+                fontWeight: 800,
+                marginBottom: "0.5rem",
+              }}
+            >
+              Create Your Account
+            </h1>
+
+            <p
+              style={{
+                color: "var(--text-muted)",
+                fontSize: "0.9rem",
+              }}
+            >
+              Join ProjectForge and connect with your peers.
+            </p>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div
+              style={{
+                marginBottom: "1.25rem",
+                padding: "0.85rem 1rem",
+                borderRadius: "8px",
+                background: "rgba(244, 63, 94, 0.12)",
+                border: "1px solid rgba(244, 63, 94, 0.3)",
+                color: "#f87171",
+                fontSize: "0.875rem",
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          {/* Registration Form */}
+          <form
+            onSubmit={handleSubmit}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "1.1rem",
+            }}
+          >
+            {/* Full Name */}
+            <div>
+              <label
+                htmlFor="name"
+                style={{
+                  display: "block",
+                  marginBottom: "0.45rem",
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                }}
+              >
+                Full Name
+              </label>
+
+              <div style={{ position: "relative" }}>
+                <User
+                  size={17}
+                  style={{
+                    position: "absolute",
+                    left: "0.85rem",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "var(--text-muted)",
+                  }}
+                />
+
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
+                  placeholder="Enter your full name"
+                  style={{
+                    width: "100%",
+                    padding: "0.75rem 0.75rem 0.75rem 2.5rem",
+                    borderRadius: "8px",
+                    border: "1px solid var(--border-color)",
+                    background: "var(--bg-secondary)",
+                    color: "var(--text-main)",
+                    outline: "none",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Email */}
+            <div>
+              <label
+                htmlFor="email"
+                style={{
+                  display: "block",
+                  marginBottom: "0.45rem",
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                }}
+              >
+                Email
+              </label>
+
+              <div style={{ position: "relative" }}>
+                <Mail
+                  size={17}
+                  style={{
+                    position: "absolute",
+                    left: "0.85rem",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "var(--text-muted)",
+                  }}
+                />
+
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  placeholder="Enter your email"
+                  style={{
+                    width: "100%",
+                    padding: "0.75rem 0.75rem 0.75rem 2.5rem",
+                    borderRadius: "8px",
+                    border: "1px solid var(--border-color)",
+                    background: "var(--bg-secondary)",
+                    color: "var(--text-main)",
+                    outline: "none",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label
+                htmlFor="password"
+                style={{
+                  display: "block",
+                  marginBottom: "0.45rem",
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                }}
+              >
+                Password
+              </label>
+
+              <div style={{ position: "relative" }}>
+                <Lock
+                  size={17}
+                  style={{
+                    position: "absolute",
+                    left: "0.85rem",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "var(--text-muted)",
+                  }}
+                />
+
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  minLength={6}
+                  placeholder="Create a password"
+                  style={{
+                    width: "100%",
+                    padding: "0.75rem 0.75rem 0.75rem 2.5rem",
+                    borderRadius: "8px",
+                    border: "1px solid var(--border-color)",
+                    background: "var(--bg-secondary)",
+                    color: "var(--text-main)",
+                    outline: "none",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Department */}
+            <div>
+              <label
+                htmlFor="department"
+                style={{
+                  display: "block",
+                  marginBottom: "0.45rem",
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                }}
+              >
+                Department
+              </label>
+
+              <div style={{ position: "relative" }}>
+                <Building2
+                  size={17}
+                  style={{
+                    position: "absolute",
+                    left: "0.85rem",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "var(--text-muted)",
+                  }}
+                />
+
+                <input
+                  id="department"
+                  name="department"
+                  type="text"
+                  value={formData.department}
+                  onChange={handleChange}
+                  required
+                  placeholder="e.g. ECE"
+                  style={{
+                    width: "100%",
+                    padding: "0.75rem 0.75rem 0.75rem 2.5rem",
+                    borderRadius: "8px",
+                    border: "1px solid var(--border-color)",
+                    background: "var(--bg-secondary)",
+                    color: "var(--text-main)",
+                    outline: "none",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Bio */}
+            <div>
+              <label
+                htmlFor="bio"
+                style={{
+                  display: "block",
+                  marginBottom: "0.45rem",
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                }}
+              >
+                Bio{" "}
+                <span
+                  style={{
+                    color: "var(--text-muted)",
+                    fontWeight: 400,
+                  }}
+                >
+                  (optional)
+                </span>
+              </label>
+
+              <textarea
+                id="bio"
+                name="bio"
+                value={formData.bio}
+                onChange={handleChange}
+                rows={3}
+                placeholder="Tell other students a little about yourself..."
+                style={{
+                  width: "100%",
+                  padding: "0.75rem",
+                  borderRadius: "8px",
+                  border: "1px solid var(--border-color)",
+                  background: "var(--bg-secondary)",
+                  color: "var(--text-main)",
+                  outline: "none",
+                  resize: "vertical",
+                }}
+              />
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary"
+              style={{
+                width: "100%",
+                justifyContent: "center",
+                marginTop: "0.5rem",
+                opacity: loading ? 0.7 : 1,
+                cursor: loading ? "not-allowed" : "pointer",
+              }}
+            >
+              {loading ? "Creating Account..." : "Create Account"}
+            </button>
+          </form>
+
+          {/* Login Link */}
+          <div
+            style={{
+              textAlign: "center",
+              marginTop: "1.5rem",
+              fontSize: "0.9rem",
+              color: "var(--text-muted)",
+            }}
+          >
+            Already have an account?{" "}
+            <Link
+              href="/login"
+              style={{
+                color: "var(--primary-cyan)",
+                fontWeight: 600,
+              }}
+            >
+              Sign In
+            </Link>
+          </div>
         </div>
       </div>
     </div>

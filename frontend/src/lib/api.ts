@@ -1,6 +1,7 @@
 export interface User {
   id: number;
   full_name: string;
+  name?: string;
   email: string;
   department: string;
   bio?: string;
@@ -10,7 +11,7 @@ export interface User {
 
 export interface ProjectAuthor {
   id: number;
-  full_name: string;
+  name: string;
   email: string;
   department: string;
   bio?: string;
@@ -22,16 +23,21 @@ export interface Project {
   description: string;
   category: string;
 
-  // Backend uses tech_stack
-  tech_stack: string;
+  // Backend currently uses technologies.
+  // Keep the older tech_stack field optional for compatibility.
+  technologies: string;
+  tech_stack?: string;
 
-  // Backend uses these names
+  // Backend currently uses github_link / demo_link.
+  github_link?: string;
+  demo_link?: string;
+
+  // Keep older names optional for compatibility.
   github_url?: string;
   demo_url?: string;
 
   user_id: number;
 
-  // Some API responses may include the author/user
   author?: ProjectAuthor;
   user?: ProjectAuthor;
 
@@ -40,35 +46,79 @@ export interface Project {
 
 export interface HelpRequest {
   id: number;
-  title: string;
-  description: string;
-  category: string;
+  title?: string;
+  description?: string;
+  category?: string;
+
   status: "Pending" | "Accepted" | "Declined";
 
-  project_id: number;
-  user_id: number;
-
+  project_id?: number;
+  user_id?: number;
   helper_id?: number;
+
+  requester_id?: number;
+  recipient_id?: number;
+
+  message: string;
 
   created_at: string;
 
+  project_title?: string;
+
   helper?: {
     id: number;
-    full_name: string;
+    name?: string;
+    full_name?: string;
     email: string;
     department: string;
   };
 
   user?: {
     id: number;
-    full_name: string;
+    name?: string;
+    full_name?: string;
+    email: string;
+    department: string;
+  };
+
+  requester?: {
+    id: number;
+    name?: string;
+    full_name?: string;
+    email: string;
+    department: string;
+  };
+
+  recipient?: {
+    id: number;
+    name?: string;
+    full_name?: string;
     email: string;
     department: string;
   };
 }
 
-// Deployed FastAPI backend
-const API_URL = "https://projectforge-jlhb.onrender.com";
+// =====================================================
+// API URL
+// =====================================================
+//
+// On Vercel, create:
+//
+// NEXT_PUBLIC_API_URL=https://YOUR-RENDER-BACKEND.onrender.com
+//
+// Do NOT add /api at the end.
+//
+// Local development falls back to localhost.
+// =====================================================
+
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://127.0.0.1:8000";
+
+
+// =====================================================
+// MAIN API FETCH FUNCTION
+// =====================================================
 
 export async function apiFetch<T>(
   endpoint: string,
@@ -78,6 +128,7 @@ export async function apiFetch<T>(
 
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
+
     headers: {
       "Content-Type": "application/json",
 
@@ -108,12 +159,18 @@ export async function apiFetch<T>(
     throw new Error(message);
   }
 
+  // DELETE requests may return no body.
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   return response.json() as Promise<T>;
 }
 
-// =========================
+
+// =====================================================
 // TOKEN MANAGEMENT
-// =========================
+// =====================================================
 
 export function setToken(token: string) {
   if (typeof window !== "undefined") {
@@ -135,9 +192,10 @@ export function removeToken() {
   }
 }
 
-// =========================
+
+// =====================================================
 // PROJECT API
-// =========================
+// =====================================================
 
 export async function getProjects(
   category?: string,
@@ -156,27 +214,30 @@ export async function getProjects(
   const query = params.toString();
 
   return apiFetch<Project[]>(
-    `/api/projects${query ? `?${query}` : ""}`
+    `/projects${query ? `?${query}` : ""}`
   );
 }
+
 
 export async function getProject(
   projectId: number
 ): Promise<Project> {
   return apiFetch<Project>(
-    `/api/projects/${projectId}`
+    `/projects/${projectId}`
   );
 }
+
 
 export async function getMyProjects(): Promise<Project[]> {
   return apiFetch<Project[]>(
-    "/api/projects/my-projects"
+    "/projects/me"
   );
 }
 
-// =========================
+
+// =====================================================
 // HELP REQUEST API
-// =========================
+// =====================================================
 
 export async function getHelpRequests(
   category?: string
@@ -190,14 +251,15 @@ export async function getHelpRequests(
   const query = params.toString();
 
   return apiFetch<HelpRequest[]>(
-    `/api/help-requests${query ? `?${query}` : ""}`
+    `/requests${query ? `?${query}` : ""}`
   );
 }
 
-// =========================
+
+// =====================================================
 // AUTH API
-// =========================
+// =====================================================
 
 export async function getCurrentUser(): Promise<User> {
-  return apiFetch<User>("/api/auth/me");
+  return apiFetch<User>("/auth/me");
 }
