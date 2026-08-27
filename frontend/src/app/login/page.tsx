@@ -31,23 +31,20 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     setError(null);
     setLoading(true);
 
     try {
-      const res = await apiFetch<LoginResponse>(
-        "/api/auth/login",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            email: email.trim(),
-            password,
-          }),
-        }
-      );
+      const res = await apiFetch<LoginResponse>("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+        }),
+      });
 
       const user = {
         id: res.user.id,
@@ -55,17 +52,17 @@ export default function LoginPage() {
         email: res.user.email,
         department: res.user.department,
         bio: res.user.bio,
-        demonstrated_skills:
-          res.user.demonstrated_skills,
+        demonstrated_skills: res.user.demonstrated_skills,
         created_at:
-          res.user.created_at ||
-          new Date().toISOString(),
+          res.user.created_at || new Date().toISOString(),
       };
 
       login(res.access_token, user);
 
       router.push("/dashboard");
     } catch (err: unknown) {
+      console.error("Login error:", err);
+
       if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -88,7 +85,9 @@ export default function LoginPage() {
     >
       <div
         className="glass-card"
-        style={{ padding: "2.5rem" }}
+        style={{
+          padding: "2.5rem",
+        }}
       >
         <div
           style={{
@@ -135,10 +134,8 @@ export default function LoginPage() {
         {error && (
           <div
             style={{
-              background:
-                "rgba(244, 63, 94, 0.12)",
-              border:
-                "1px solid rgba(244, 63, 94, 0.3)",
+              background: "rgba(244, 63, 94, 0.12)",
+              border: "1px solid rgba(244, 63, 94, 0.3)",
               color: "#fb7185",
               padding: "0.75rem 1rem",
               borderRadius: "8px",
@@ -181,9 +178,7 @@ export default function LoginPage() {
               className="input-field"
               placeholder="alex.chen@university.edu"
               value={email}
-              onChange={(e) =>
-                setEmail(e.target.value)
-              }
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 
@@ -206,9 +201,7 @@ export default function LoginPage() {
               className="input-field"
               placeholder="••••••••"
               value={password}
-              onChange={(e) =>
-                setPassword(e.target.value)
-              }
+              onChange={(e) => setPassword(e.target.value)}
             />
           </div>
 
@@ -221,11 +214,11 @@ export default function LoginPage() {
               justifyContent: "center",
               padding: "0.75rem",
               marginTop: "0.5rem",
+              opacity: loading ? 0.7 : 1,
+              cursor: loading ? "not-allowed" : "pointer",
             }}
           >
-            {loading
-              ? "Authenticating..."
-              : "Log In"}
+            {loading ? "Authenticating..." : "Log In"}
           </button>
         </form>
 
@@ -238,7 +231,6 @@ export default function LoginPage() {
           }}
         >
           Don't have an account yet?{" "}
-
           <Link
             href="/register"
             style={{
