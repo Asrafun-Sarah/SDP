@@ -1,6 +1,5 @@
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://projectforge-jlhb.onrender.com";
-
+  process.env.NEXT_PUBLIC_API_URL || "https://projectforge-jlhb.onrender.com/api";
 export interface User {
   id: number;
   name?: string;
