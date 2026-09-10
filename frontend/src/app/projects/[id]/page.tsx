@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -17,7 +18,7 @@ import {
   Code2,
   CheckCircle,
   X,
-  Send
+  Send,
 } from "lucide-react";
 
 export default function ProjectDetailsPage() {
@@ -40,19 +41,31 @@ export default function ProjectDetailsPage() {
     async function fetchDetails() {
       try {
         setLoading(true);
-        const data = await apiFetch<Project>(`/projects/${projectId}`);
+
+        const data = await apiFetch<Project>(
+          `/projects/${projectId}`
+        );
+
         setProject(data);
       } catch (err: any) {
-        setError(err.message || "Failed to load project details.");
+        setError(
+          err.message || "Failed to load project details."
+        );
       } finally {
         setLoading(false);
       }
     }
-    if (projectId) fetchDetails();
+
+    if (projectId) {
+      fetchDetails();
+    }
   }, [projectId]);
 
-  const handleSendHelpRequest = async (e: React.FormEvent) => {
+  const handleSendHelpRequest = async (
+    e: React.FormEvent
+  ) => {
     e.preventDefault();
+
     if (!user) {
       router.push("/login");
       return;
@@ -60,6 +73,7 @@ export default function ProjectDetailsPage() {
 
     try {
       setSubmittingHelp(true);
+
       await apiFetch("/requests", {
         method: "POST",
         body: JSON.stringify({
@@ -67,14 +81,18 @@ export default function ProjectDetailsPage() {
           message: helpMessage,
         }),
       });
+
       setHelpSuccess(true);
+
       setTimeout(() => {
         setShowHelpModal(false);
         setHelpSuccess(false);
         setHelpMessage("");
       }, 2000);
     } catch (err: any) {
-      alert(err.message || "Failed to send help request");
+      alert(
+        err.message || "Failed to send help request"
+      );
     } finally {
       setSubmittingHelp(false);
     }
@@ -82,7 +100,14 @@ export default function ProjectDetailsPage() {
 
   if (loading) {
     return (
-      <div className="container" style={{ padding: "5rem 1.5rem", textAlign: "center", color: "var(--text-muted)" }}>
+      <div
+        className="container"
+        style={{
+          padding: "5rem 1.5rem",
+          textAlign: "center",
+          color: "var(--text-muted)",
+        }}
+      >
         Loading project details...
       </div>
     );
@@ -90,64 +115,327 @@ export default function ProjectDetailsPage() {
 
   if (error || !project) {
     return (
-      <div className="container" style={{ padding: "5rem 1.5rem", textAlign: "center" }}>
-        <h2 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "1rem" }}>Project Not Found</h2>
-        <p style={{ color: "var(--text-muted)", marginBottom: "1.5rem" }}>{error}</p>
-        <Link href="/projects" className="btn-secondary">
-          <ArrowLeft size={16} /> Back to Browse Projects
+      <div
+        className="container"
+        style={{
+          padding: "5rem 1.5rem",
+          textAlign: "center",
+        }}
+      >
+        <h2
+          style={{
+            fontSize: "1.5rem",
+            fontWeight: 700,
+            marginBottom: "1rem",
+          }}
+        >
+          Project Not Found
+        </h2>
+
+        <p
+          style={{
+            color: "var(--text-muted)",
+            marginBottom: "1.5rem",
+          }}
+        >
+          {error}
+        </p>
+
+        <Link
+          href="/projects"
+          className="btn-secondary"
+        >
+          <ArrowLeft size={16} />
+          Back to Browse Projects
         </Link>
       </div>
     );
   }
 
-  const techList = project.technologies
-    ? project.technologies.split(",").map((t) => t.trim()).filter(Boolean)
-    : [];
+  /*
+   * The current seeded projects with IDs 1 and 2
+   * are demo projects used to preview ProjectForge.
+   */
+  const isDemoProject =
+    project.id === 1 || project.id === 2;
 
-  const isOwnProject = user && user.id === project.author_id;
+  if (isDemoProject) {
+    return (
+      <div
+        className="container"
+        style={{
+          padding: "5rem 1.5rem",
+          maxWidth: "700px",
+          textAlign: "center",
+        }}
+      >
+        <div
+          className="glass-card"
+          style={{
+            padding: "2.5rem",
+          }}
+        >
+          <div
+            style={{
+              width: "64px",
+              height: "64px",
+              margin: "0 auto 1.5rem",
+              borderRadius: "18px",
+              display: "grid",
+              placeItems: "center",
+              background:
+                "linear-gradient(135deg, rgba(74, 121, 255, 0.2), rgba(126, 85, 232, 0.2))",
+              border:
+                "1px solid rgba(113, 137, 255, 0.25)",
+            }}
+          >
+            <HelpCircle
+              size={28}
+              color="#8295ff"
+            />
+          </div>
+
+          <h2
+            style={{
+              fontSize: "1.6rem",
+              fontWeight: 800,
+              marginBottom: "0.75rem",
+            }}
+          >
+            Demo Project
+          </h2>
+
+          <p
+            style={{
+              color: "var(--text-muted)",
+              fontSize: "0.95rem",
+              lineHeight: 1.7,
+              marginBottom: "1.75rem",
+            }}
+          >
+            This is a demo project shown for preview
+            purposes. Please log in or sign up with your
+            own account to view real project details and
+            connect with project authors.
+          </p>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              gap: "0.75rem",
+              flexWrap: "wrap",
+            }}
+          >
+            <Link
+              href="/login"
+              className="btn-primary"
+            >
+              Log In
+            </Link>
+
+            <Link
+              href="/register"
+              className="btn-secondary"
+            >
+              Sign Up
+            </Link>
+          </div>
+
+          <div
+            style={{
+              marginTop: "1.5rem",
+            }}
+          >
+            <Link
+              href="/projects"
+              style={{
+                color: "var(--text-muted)",
+                fontSize: "0.85rem",
+              }}
+            >
+              ← Back to Projects
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const projectOwner =
+    project.owner || project.author;
+
+  const authorId =
+    projectOwner?.id ??
+    project.author_id ??
+    project.user_id;
+
+  const authorName =
+    projectOwner?.full_name ||
+    projectOwner?.name ||
+    "Engineering Student";
+
+  const authorDepartment =
+    projectOwner?.department ||
+    "Engineering Student";
+
+  const authorBio =
+    projectOwner?.bio ||
+    "Engineering student sharing technical academic builds and research.";
+
+  const techList = (
+    project.technologies ||
+    project.tech_stack ||
+    ""
+  )
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  const githubLink =
+    project.github_link ||
+    project.github_url;
+
+  const demoLink =
+    project.demo_link ||
+    project.demo_url;
+
+  const isOwnProject =
+    user &&
+    user.id === (
+      project.author_id ??
+      project.user_id
+    );
 
   return (
-    <div className="container" style={{ padding: "3rem 1.5rem", maxWidth: "1000px" }}>
+    <div
+      className="container"
+      style={{
+        padding: "3rem 1.5rem",
+        maxWidth: "1000px",
+      }}
+    >
       {/* Back Button */}
-      <Link href="/projects" style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "var(--text-muted)", fontSize: "0.875rem", marginBottom: "1.5rem" }}>
+      <Link
+        href="/projects"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "0.4rem",
+          color: "var(--text-muted)",
+          fontSize: "0.875rem",
+          marginBottom: "1.5rem",
+        }}
+      >
         <ArrowLeft size={16} />
         Back to Projects
       </Link>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: "2rem" }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 320px",
+          gap: "2rem",
+        }}
+      >
         {/* Main Content Area */}
         <div>
-          <div className="glass-card" style={{ padding: "2.25rem", marginBottom: "2rem" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
-              <CategoryBadge category={project.category} />
-              <span style={{ fontSize: "0.8rem", color: "var(--text-subtle)", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+          <div
+            className="glass-card"
+            style={{
+              padding: "2.25rem",
+              marginBottom: "2rem",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "1rem",
+              }}
+            >
+              <CategoryBadge
+                category={project.category}
+              />
+
+              <span
+                style={{
+                  fontSize: "0.8rem",
+                  color: "var(--text-subtle)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.3rem",
+                }}
+              >
                 <Calendar size={13} />
-                Published {new Date(project.created_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+
+                Published{" "}
+                {new Date(
+                  project.created_at
+                ).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
               </span>
             </div>
 
-            <h1 style={{ fontSize: "2.25rem", fontWeight: 800, marginBottom: "1.25rem", lineHeight: 1.2 }}>
+            <h1
+              style={{
+                fontSize: "2.25rem",
+                fontWeight: 800,
+                marginBottom: "1.25rem",
+                lineHeight: 1.2,
+              }}
+            >
               {project.title}
             </h1>
 
-            <div style={{ marginBottom: "2rem" }}>
-              <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-main)", marginBottom: "0.75rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <Code2 size={18} color="var(--primary-cyan)" />
+            <div
+              style={{
+                marginBottom: "2rem",
+              }}
+            >
+              <h3
+                style={{
+                  fontSize: "1rem",
+                  fontWeight: 700,
+                  color: "var(--text-main)",
+                  marginBottom: "0.75rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                }}
+              >
+                <Code2
+                  size={18}
+                  color="var(--primary-cyan)"
+                />
                 Technologies & Tools Used
               </h3>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "0.5rem",
+                }}
+              >
                 {techList.map((tech, idx) => (
                   <span
                     key={idx}
                     style={{
                       fontSize: "0.85rem",
                       fontFamily: "var(--font-mono)",
-                      background: "rgba(56, 189, 248, 0.1)",
-                      border: "1px solid rgba(56, 189, 248, 0.25)",
+                      background:
+                        "rgba(56, 189, 248, 0.1)",
+                      border:
+                        "1px solid rgba(56, 189, 248, 0.25)",
                       color: "var(--primary-cyan)",
                       padding: "0.35rem 0.75rem",
                       borderRadius: "6px",
-                      fontWeight: 500
+                      fontWeight: 500,
                     }}
                   >
                     {tech}
@@ -157,34 +445,65 @@ export default function ProjectDetailsPage() {
             </div>
 
             <div>
-              <h3 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.75rem" }}>Project Overview</h3>
-              <p style={{ color: "var(--text-muted)", fontSize: "1rem", lineHeight: 1.7, whiteSpace: "pre-line" }}>
+              <h3
+                style={{
+                  fontSize: "1.1rem",
+                  fontWeight: 700,
+                  marginBottom: "0.75rem",
+                }}
+              >
+                Project Overview
+              </h3>
+
+              <p
+                style={{
+                  color: "var(--text-muted)",
+                  fontSize: "1rem",
+                  lineHeight: 1.7,
+                  whiteSpace: "pre-line",
+                }}
+              >
                 {project.description}
               </p>
             </div>
 
             {/* External Links */}
-            {(project.github_link || project.demo_link) && (
-              <div style={{ borderTop: "1px solid var(--border-color)", marginTop: "2rem", paddingTop: "1.5rem", display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-                {project.github_link && (
+            {(githubLink || demoLink) && (
+              <div
+                style={{
+                  borderTop:
+                    "1px solid var(--border-color)",
+                  marginTop: "2rem",
+                  paddingTop: "1.5rem",
+                  display: "flex",
+                  gap: "1rem",
+                  flexWrap: "wrap",
+                }}
+              >
+                {githubLink && (
                   <a
-                    href={project.github_link}
+                    href={githubLink}
                     target="_blank"
                     rel="noreferrer"
                     className="btn-secondary"
-                    style={{ fontSize: "0.875rem" }}
+                    style={{
+                      fontSize: "0.875rem",
+                    }}
                   >
                     <FolderGit2 size={16} />
                     GitHub Repository
                   </a>
                 )}
-                {project.demo_link && (
+
+                {demoLink && (
                   <a
-                    href={project.demo_link}
+                    href={demoLink}
                     target="_blank"
                     rel="noreferrer"
                     className="btn-primary"
-                    style={{ fontSize: "0.875rem" }}
+                    style={{
+                      fontSize: "0.875rem",
+                    }}
                   >
                     <ExternalLink size={16} />
                     Live Project Demo
@@ -197,32 +516,99 @@ export default function ProjectDetailsPage() {
 
         {/* Sidebar: Author Info & Request Help Action */}
         <div>
-          <div className="glass-card" style={{ padding: "1.75rem", position: "sticky", top: "5.5rem" }}>
-            <h3 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          <div
+            className="glass-card"
+            style={{
+              padding: "1.75rem",
+              position: "sticky",
+              top: "5.5rem",
+            }}
+          >
+            <h3
+              style={{
+                fontSize: "1rem",
+                fontWeight: 700,
+                marginBottom: "1rem",
+                color: "var(--text-muted)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
               Project Author
             </h3>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "0.875rem", marginBottom: "1.25rem" }}>
-              <div style={{ width: "3rem", height: "3rem", borderRadius: "50%", background: "linear-gradient(135deg, #0284c7 0%, #4f46e5 100%)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <User size={20} color="#ffffff" />
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.875rem",
+                marginBottom: "1.25rem",
+              }}
+            >
+              <div
+                style={{
+                  width: "3rem",
+                  height: "3rem",
+                  borderRadius: "50%",
+                  background:
+                    "linear-gradient(135deg, #0284c7 0%, #4f46e5 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <User
+                  size={20}
+                  color="#ffffff"
+                />
               </div>
+
               <div>
-                <h4 style={{ fontSize: "1.1rem", fontWeight: 700 }}>{project.author.full_name}</h4>
-                <p style={{ fontSize: "0.825rem", color: "var(--primary-cyan)" }}>{project.author.department}</p>
+                <h4
+                  style={{
+                    fontSize: "1.1rem",
+                    fontWeight: 700,
+                  }}
+                >
+                  {authorName}
+                </h4>
+
+                <p
+                  style={{
+                    fontSize: "0.825rem",
+                    color: "var(--primary-cyan)",
+                  }}
+                >
+                  {authorDepartment}
+                </p>
               </div>
             </div>
 
-            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.5, marginBottom: "1.5rem" }}>
-              {project.author.bio || "Engineering student sharing technical academic builds and research."}
+            <p
+              style={{
+                fontSize: "0.85rem",
+                color: "var(--text-muted)",
+                lineHeight: 1.5,
+                marginBottom: "1.5rem",
+              }}
+            >
+              {authorBio}
             </p>
 
-            <Link
-              href={`/profile/${project.author.id}`}
-              className="btn-secondary"
-              style={{ width: "100%", justifyContent: "center", marginBottom: "1rem", fontSize: "0.875rem" }}
-            >
-              View Student Profile & Skills
-            </Link>
+            {authorId && (
+              <Link
+                href={`/profile/${authorId}`}
+                className="btn-secondary"
+                style={{
+                  width: "100%",
+                  justifyContent: "center",
+                  marginBottom: "1rem",
+                  fontSize: "0.875rem",
+                }}
+              >
+                View Student Profile & Skills
+              </Link>
+            )}
 
             {/* Request Help Button (Feature 13) */}
             {!isOwnProject && (
@@ -235,7 +621,11 @@ export default function ProjectDetailsPage() {
                   }
                 }}
                 className="btn-primary"
-                style={{ width: "100%", justifyContent: "center", padding: "0.75rem" }}
+                style={{
+                  width: "100%",
+                  justifyContent: "center",
+                  padding: "0.75rem",
+                }}
               >
                 <HelpCircle size={18} />
                 Request Help From Author
@@ -247,63 +637,142 @@ export default function ProjectDetailsPage() {
 
       {/* Feature 13: Request Help Modal Dialog */}
       {showHelpModal && (
-        <div style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: "rgba(0, 0, 0, 0.75)",
-          backdropFilter: "blur(4px)",
-          zIndex: 100,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "1.5rem"
-        }}>
-          <div className="glass-card" style={{ width: "100%", maxWidth: "500px", padding: "2rem", position: "relative" }}>
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.75)",
+            backdropFilter: "blur(4px)",
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "1.5rem",
+          }}
+        >
+          <div
+            className="glass-card"
+            style={{
+              width: "100%",
+              maxWidth: "500px",
+              padding: "2rem",
+              position: "relative",
+            }}
+          >
             <button
-              onClick={() => setShowHelpModal(false)}
-              style={{ position: "absolute", top: "1.25rem", right: "1.25rem", background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer" }}
+              onClick={() =>
+                setShowHelpModal(false)
+              }
+              style={{
+                position: "absolute",
+                top: "1.25rem",
+                right: "1.25rem",
+                background: "transparent",
+                border: "none",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+              }}
             >
               <X size={20} />
             </button>
 
             {helpSuccess ? (
-              <div style={{ textAlign: "center", padding: "1.5rem 0" }}>
-                <CheckCircle size={48} color="#34d399" style={{ margin: "0 auto 1rem auto" }} />
-                <h3 style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "0.5rem" }}>Request Sent Successfully!</h3>
-                <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
-                  Your request has been delivered to {project.author.full_name}. You can track the status in your Dashboard.
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "1.5rem 0",
+                }}
+              >
+                <CheckCircle
+                  size={48}
+                  color="#34d399"
+                  style={{
+                    margin: "0 auto 1rem auto",
+                  }}
+                />
+
+                <h3
+                  style={{
+                    fontSize: "1.25rem",
+                    fontWeight: 700,
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  Request Sent Successfully!
+                </h3>
+
+                <p
+                  style={{
+                    color: "var(--text-muted)",
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  Your request has been delivered to{" "}
+                  {authorName}. You can track the
+                  status in your Dashboard.
                 </p>
               </div>
             ) : (
               <div>
-                <h3 style={{ fontSize: "1.35rem", fontWeight: 800, marginBottom: "0.5rem" }}>
-                  Request Help from {project.author.full_name}
+                <h3
+                  style={{
+                    fontSize: "1.35rem",
+                    fontWeight: 800,
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  Request Help from {authorName}
                 </h3>
-                <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", marginBottom: "1.25rem" }}>
-                  Send a friendly message describing what guidance or advice you need regarding "{project.title}".
+
+                <p
+                  style={{
+                    color: "var(--text-muted)",
+                    fontSize: "0.875rem",
+                    marginBottom: "1.25rem",
+                  }}
+                >
+                  Send a friendly message describing what
+                  guidance or advice you need regarding "
+                  {project.title}".
                 </p>
 
-                <form onSubmit={handleSendHelpRequest} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <form
+                  onSubmit={handleSendHelpRequest}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "1rem",
+                  }}
+                >
                   <textarea
                     required
                     rows={4}
                     className="input-field"
                     placeholder="e.g. Hi! I am working on a similar Arduino project for my 2nd year lab and would love your advice on microcontroller wiring and motor driver calibration..."
                     value={helpMessage}
-                    onChange={(e) => setHelpMessage(e.target.value)}
+                    onChange={(e) =>
+                      setHelpMessage(e.target.value)
+                    }
                   />
 
                   <button
                     type="submit"
                     disabled={submittingHelp}
                     className="btn-primary"
-                    style={{ width: "100%", justifyContent: "center", padding: "0.75rem" }}
+                    style={{
+                      width: "100%",
+                      justifyContent: "center",
+                      padding: "0.75rem",
+                    }}
                   >
                     <Send size={16} />
-                    {submittingHelp ? "Sending Request..." : "Send Help Request"}
+
+                    {submittingHelp
+                      ? "Sending Request..."
+                      : "Send Help Request"}
                   </button>
                 </form>
               </div>

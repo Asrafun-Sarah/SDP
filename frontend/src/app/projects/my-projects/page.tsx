@@ -3,10 +3,12 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
-import { ProjectCard, Project } from "@/components/ProjectCard";
+import { Project } from "@/components/ProjectCard";
 import { CategoryBadge } from "@/components/CategoryBadge";
+
 import {
   FolderGit2,
   PlusCircle,
@@ -16,23 +18,34 @@ import {
   X,
 } from "lucide-react";
 
+
 export default function MyProjectsPage() {
   const router = useRouter();
+
   const { user, loading: authLoading } = useAuth();
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Edit Modal State
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  // Edit modal state
+  const [editingProject, setEditingProject] =
+    useState<Project | null>(null);
+
   const [editTitle, setEditTitle] = useState("");
   const [editCategory, setEditCategory] = useState("");
-  const [editTechnologies, setEditTechnologies] = useState("");
-  const [editDescription, setEditDescription] = useState("");
+  const [editTechnologies, setEditTechnologies] =
+    useState("");
+  const [editDescription, setEditDescription] =
+    useState("");
   const [editGithub, setEditGithub] = useState("");
   const [editDemo, setEditDemo] = useState("");
+
   const [savingEdit, setSavingEdit] = useState(false);
 
+
+  // ---------------------------------------------------------
+  // Load user's projects
+  // ---------------------------------------------------------
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/login");
@@ -44,69 +57,81 @@ export default function MyProjectsPage() {
     }
   }, [user, authLoading, router]);
 
+
   const loadMyProjects = async () => {
     try {
       setLoading(true);
 
-      // Backend route:
-      // GET /api/projects/me
-      const data = await apiFetch<Project[]>("/api/projects/me");
+      const data = await apiFetch<Project[]>(
+        "/projects/my-projects"
+      );
 
       setProjects(data);
     } catch (err) {
-      console.error("Failed to load my projects:", err);
+      console.error(
+        "Failed to load my projects:",
+        err
+      );
     } finally {
       setLoading(false);
     }
   };
 
+
+  // ---------------------------------------------------------
+  // Start editing
+  // ---------------------------------------------------------
   const handleStartEdit = (proj: Project) => {
     setEditingProject(proj);
 
     setEditTitle(proj.title);
     setEditCategory(proj.category);
 
-    // Backend/frontend naming compatibility
     setEditTechnologies(
-      (proj as any).technologies ??
-        (proj as any).tech_stack ??
-        ""
+      proj.tech_stack ?? ""
     );
 
     setEditDescription(proj.description);
 
     setEditGithub(
-      (proj as any).github_link ??
-        (proj as any).github_url ??
-        ""
+      proj.github_url ?? ""
     );
 
     setEditDemo(
-      (proj as any).demo_link ??
-        (proj as any).demo_url ??
-        ""
+      proj.demo_url ?? ""
     );
   };
 
-  const handleSaveEdit = async (e: React.FormEvent) => {
+
+  // ---------------------------------------------------------
+  // Save edited project
+  // ---------------------------------------------------------
+  const handleSaveEdit = async (
+    e: React.FormEvent
+  ) => {
     e.preventDefault();
 
-    if (!editingProject) return;
+    if (!editingProject) {
+      return;
+    }
 
     try {
       setSavingEdit(true);
 
       await apiFetch<Project>(
-        `/api/projects/${editingProject.id}`,
+        `/projects/${editingProject.id}`,
         {
           method: "PUT",
+
           body: JSON.stringify({
-            title: editTitle,
+            title: editTitle.trim(),
             category: editCategory,
-            technologies: editTechnologies,
-            description: editDescription,
-            github_link: editGithub.trim() || undefined,
-            demo_link: editDemo.trim() || undefined,
+            tech_stack: editTechnologies.trim(),
+            description: editDescription.trim(),
+            github_url:
+              editGithub.trim() || null,
+            demo_url:
+              editDemo.trim() || null,
           }),
         }
       );
@@ -114,39 +139,57 @@ export default function MyProjectsPage() {
       setEditingProject(null);
 
       await loadMyProjects();
+
+      alert("Project updated successfully!");
     } catch (err: any) {
-      alert(err.message || "Failed to update project.");
+      alert(
+        err.message ||
+          "Failed to update project."
+      );
     } finally {
       setSavingEdit(false);
     }
   };
 
+
+  // ---------------------------------------------------------
+  // Delete project
+  // ---------------------------------------------------------
   const handleDelete = async (
     projectId: number,
     title: string
   ) => {
-    if (
-      !confirm(
-        `Are you sure you want to delete "${title}"? This action cannot be undone.`
-      )
-    ) {
+    const confirmed = confirm(
+      `Are you sure you want to delete "${title}"? This action cannot be undone.`
+    );
+
+    if (!confirmed) {
       return;
     }
 
     try {
       await apiFetch(
-        `/api/projects/${projectId}`,
+        `/projects/${projectId}`,
         {
           method: "DELETE",
         }
       );
 
       await loadMyProjects();
+
+      alert("Project deleted successfully!");
     } catch (err: any) {
-      alert(err.message || "Failed to delete project.");
+      alert(
+        err.message ||
+          "Failed to delete project."
+      );
     }
   };
 
+
+  // ---------------------------------------------------------
+  // Loading state
+  // ---------------------------------------------------------
   if (authLoading || loading) {
     return (
       <div
@@ -162,6 +205,10 @@ export default function MyProjectsPage() {
     );
   }
 
+
+  // ---------------------------------------------------------
+  // Page
+  // ---------------------------------------------------------
   return (
     <div
       className="container"
@@ -169,6 +216,7 @@ export default function MyProjectsPage() {
         padding: "3rem 1.5rem",
       }}
     >
+
       {/* Header */}
       <div
         style={{
@@ -196,7 +244,8 @@ export default function MyProjectsPage() {
               fontSize: "0.95rem",
             }}
           >
-            View, edit, and manage your engineering project submissions
+            View, edit, and manage your engineering
+            project submissions
           </p>
         </div>
 
@@ -209,6 +258,8 @@ export default function MyProjectsPage() {
         </Link>
       </div>
 
+
+      {/* No projects */}
       {projects.length === 0 ? (
         <div
           className="glass-card"
@@ -240,12 +291,13 @@ export default function MyProjectsPage() {
               color: "var(--text-muted)",
               fontSize: "0.9rem",
               maxWidth: "420px",
-              margin: "0 auto 1.5rem auto",
+              margin:
+                "0 auto 1.5rem auto",
             }}
           >
-            Sharing your academic or personal builds helps fellow
-            engineering students and builds your demonstrated skill
-            profile.
+            Sharing your academic or personal builds
+            helps fellow engineering students and
+            builds your demonstrated skill profile.
           </p>
 
           <Link
@@ -257,6 +309,8 @@ export default function MyProjectsPage() {
           </Link>
         </div>
       ) : (
+
+        /* Project cards */
         <div
           style={{
             display: "grid",
@@ -267,9 +321,7 @@ export default function MyProjectsPage() {
         >
           {projects.map((proj) => {
             const technologies =
-              (proj as any).technologies ??
-              (proj as any).tech_stack ??
-              "";
+              proj.tech_stack ?? "";
 
             return (
               <div
@@ -282,12 +334,16 @@ export default function MyProjectsPage() {
                   justifyContent: "space-between",
                 }}
               >
+
                 <div>
+
+                  {/* Category + Date */}
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "space-between",
+                      justifyContent:
+                        "space-between",
                       marginBottom: "0.875rem",
                     }}
                   >
@@ -298,7 +354,8 @@ export default function MyProjectsPage() {
                     <span
                       style={{
                         fontSize: "0.75rem",
-                        color: "var(--text-subtle)",
+                        color:
+                          "var(--text-subtle)",
                       }}
                     >
                       {new Date(
@@ -307,6 +364,8 @@ export default function MyProjectsPage() {
                     </span>
                   </div>
 
+
+                  {/* Title */}
                   <h3
                     style={{
                       fontSize: "1.15rem",
@@ -317,32 +376,44 @@ export default function MyProjectsPage() {
                     {proj.title}
                   </h3>
 
+
+                  {/* Description */}
                   <p
                     style={{
-                      color: "var(--text-muted)",
+                      color:
+                        "var(--text-muted)",
                       fontSize: "0.875rem",
                       lineHeight: 1.5,
                       marginBottom: "1rem",
-                      display: "-webkit-box",
+                      display:
+                        "-webkit-box",
                       WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
+                      WebkitBoxOrient:
+                        "vertical",
                       overflow: "hidden",
                     }}
                   >
                     {proj.description}
                   </p>
 
+
+                  {/* Technologies */}
                   <div
                     style={{
                       fontSize: "0.8rem",
-                      color: "var(--primary-cyan)",
-                      fontFamily: "var(--font-mono)",
-                      marginBottom: "1.25rem",
+                      color:
+                        "var(--primary-cyan)",
+                      fontFamily:
+                        "var(--font-mono)",
+                      marginBottom:
+                        "1.25rem",
                     }}
                   >
                     Stack: {technologies}
                   </div>
+
                 </div>
+
 
                 {/* Management Controls */}
                 <div
@@ -352,14 +423,18 @@ export default function MyProjectsPage() {
                     paddingTop: "1rem",
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "space-between",
+                    justifyContent:
+                      "space-between",
                   }}
                 >
+
+                  {/* View */}
                   <Link
                     href={`/projects/${proj.id}`}
                     className="btn-secondary"
                     style={{
-                      padding: "0.35rem 0.75rem",
+                      padding:
+                        "0.35rem 0.75rem",
                       fontSize: "0.8rem",
                     }}
                   >
@@ -367,19 +442,23 @@ export default function MyProjectsPage() {
                     View
                   </Link>
 
+
                   <div
                     style={{
                       display: "flex",
                       gap: "0.5rem",
                     }}
                   >
+
+                    {/* Edit */}
                     <button
                       onClick={() =>
                         handleStartEdit(proj)
                       }
                       className="btn-secondary"
                       style={{
-                        padding: "0.35rem 0.75rem",
+                        padding:
+                          "0.35rem 0.75rem",
                         fontSize: "0.8rem",
                       }}
                     >
@@ -387,6 +466,8 @@ export default function MyProjectsPage() {
                       Edit
                     </button>
 
+
+                    {/* Delete */}
                     <button
                       onClick={() =>
                         handleDelete(
@@ -396,22 +477,29 @@ export default function MyProjectsPage() {
                       }
                       className="btn-outline-danger"
                       style={{
-                        padding: "0.35rem 0.75rem",
+                        padding:
+                          "0.35rem 0.75rem",
                         fontSize: "0.8rem",
                       }}
                     >
                       <Trash2 size={14} />
                       Delete
                     </button>
+
                   </div>
+
                 </div>
+
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Edit Project Modal Dialog */}
+
+      {/* ---------------------------------------------------
+          Edit Project Modal
+      --------------------------------------------------- */}
       {editingProject && (
         <div
           style={{
@@ -420,7 +508,8 @@ export default function MyProjectsPage() {
             left: 0,
             right: 0,
             bottom: 0,
-            background: "rgba(0, 0, 0, 0.75)",
+            background:
+              "rgba(0, 0, 0, 0.75)",
             backdropFilter: "blur(4px)",
             zIndex: 100,
             display: "flex",
@@ -429,6 +518,7 @@ export default function MyProjectsPage() {
             padding: "1.5rem",
           }}
         >
+
           <div
             className="glass-card"
             style={{
@@ -440,6 +530,8 @@ export default function MyProjectsPage() {
               position: "relative",
             }}
           >
+
+            {/* Close */}
             <button
               onClick={() =>
                 setEditingProject(null)
@@ -457,6 +549,7 @@ export default function MyProjectsPage() {
               <X size={20} />
             </button>
 
+
             <h3
               style={{
                 fontSize: "1.35rem",
@@ -467,6 +560,7 @@ export default function MyProjectsPage() {
               Edit Project Details
             </h3>
 
+
             <form
               onSubmit={handleSaveEdit}
               style={{
@@ -475,13 +569,16 @@ export default function MyProjectsPage() {
                 gap: "1rem",
               }}
             >
+
+              {/* Title */}
               <div>
                 <label
                   style={{
                     display: "block",
                     fontSize: "0.85rem",
                     fontWeight: 600,
-                    marginBottom: "0.3rem",
+                    marginBottom:
+                      "0.3rem",
                   }}
                 >
                   Project Title
@@ -493,18 +590,23 @@ export default function MyProjectsPage() {
                   className="input-field"
                   value={editTitle}
                   onChange={(e) =>
-                    setEditTitle(e.target.value)
+                    setEditTitle(
+                      e.target.value
+                    )
                   }
                 />
               </div>
 
+
+              {/* Category */}
               <div>
                 <label
                   style={{
                     display: "block",
                     fontSize: "0.85rem",
                     fontWeight: 600,
-                    marginBottom: "0.3rem",
+                    marginBottom:
+                      "0.3rem",
                   }}
                 >
                   Category
@@ -514,7 +616,9 @@ export default function MyProjectsPage() {
                   className="input-field"
                   value={editCategory}
                   onChange={(e) =>
-                    setEditCategory(e.target.value)
+                    setEditCategory(
+                      e.target.value
+                    )
                   }
                 >
                   <option value="Embedded Systems">
@@ -543,13 +647,16 @@ export default function MyProjectsPage() {
                 </select>
               </div>
 
+
+              {/* Technologies */}
               <div>
                 <label
                   style={{
                     display: "block",
                     fontSize: "0.85rem",
                     fontWeight: 600,
-                    marginBottom: "0.3rem",
+                    marginBottom:
+                      "0.3rem",
                   }}
                 >
                   Technologies (Comma-separated)
@@ -568,13 +675,16 @@ export default function MyProjectsPage() {
                 />
               </div>
 
+
+              {/* Description */}
               <div>
                 <label
                   style={{
                     display: "block",
                     fontSize: "0.85rem",
                     fontWeight: 600,
-                    marginBottom: "0.3rem",
+                    marginBottom:
+                      "0.3rem",
                   }}
                 >
                   Description
@@ -593,13 +703,16 @@ export default function MyProjectsPage() {
                 />
               </div>
 
+
+              {/* GitHub */}
               <div>
                 <label
                   style={{
                     display: "block",
                     fontSize: "0.85rem",
                     fontWeight: 600,
-                    marginBottom: "0.3rem",
+                    marginBottom:
+                      "0.3rem",
                   }}
                 >
                   GitHub Link
@@ -610,18 +723,23 @@ export default function MyProjectsPage() {
                   className="input-field"
                   value={editGithub}
                   onChange={(e) =>
-                    setEditGithub(e.target.value)
+                    setEditGithub(
+                      e.target.value
+                    )
                   }
                 />
               </div>
 
+
+              {/* Demo */}
               <div>
                 <label
                   style={{
                     display: "block",
                     fontSize: "0.85rem",
                     fontWeight: 600,
-                    marginBottom: "0.3rem",
+                    marginBottom:
+                      "0.3rem",
                   }}
                 >
                   Demo Link
@@ -632,19 +750,25 @@ export default function MyProjectsPage() {
                   className="input-field"
                   value={editDemo}
                   onChange={(e) =>
-                    setEditDemo(e.target.value)
+                    setEditDemo(
+                      e.target.value
+                    )
                   }
                 />
               </div>
 
+
+              {/* Buttons */}
               <div
                 style={{
                   display: "flex",
-                  justifyContent: "flex-end",
+                  justifyContent:
+                    "flex-end",
                   gap: "0.75rem",
                   marginTop: "0.5rem",
                 }}
               >
+
                 <button
                   type="button"
                   onClick={() =>
@@ -664,11 +788,15 @@ export default function MyProjectsPage() {
                     ? "Saving..."
                     : "Save Changes"}
                 </button>
+
               </div>
+
             </form>
+
           </div>
         </div>
       )}
+
     </div>
   );
 }

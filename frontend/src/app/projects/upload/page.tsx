@@ -4,7 +4,10 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
-import { PlusCircle, Code, FolderGit2, ExternalLink, AlertCircle } from "lucide-react";
+import {
+  PlusCircle,
+  AlertCircle,
+} from "lucide-react";
 
 const CATEGORIES = [
   "Embedded Systems",
@@ -12,7 +15,7 @@ const CATEGORIES = [
   "Software",
   "Mechanical/CAD",
   "ML/AI",
-  "Electrical"
+  "Electrical",
 ];
 
 export default function UploadProjectPage() {
@@ -25,6 +28,7 @@ export default function UploadProjectPage() {
   const [technologies, setTechnologies] = useState("");
   const [githubLink, setGithubLink] = useState("");
   const [demoLink, setDemoLink] = useState("");
+
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -36,6 +40,7 @@ export default function UploadProjectPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     setError(null);
     setSubmitting(true);
 
@@ -46,159 +51,325 @@ export default function UploadProjectPage() {
           title,
           description,
           category,
-          technologies,
-          github_link: githubLink.trim() || undefined,
-          demo_link: demoLink.trim() || undefined,
+
+          // Backend expects "tech_stack"
+          tech_stack: technologies,
+
+          // Backend expects "github_url"
+          github_url: githubLink.trim() || undefined,
+
+          // Backend expects "demo_url"
+          demo_url: demoLink.trim() || undefined,
         }),
       });
 
       router.push(`/projects/${res.id}`);
     } catch (err: any) {
-      setError(err.message || "Failed to submit project. Please try again.");
+      setError(
+        err.message ||
+          "Failed to submit project. Please try again."
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
   if (authLoading) {
-    return <div className="container" style={{ padding: "4rem 1.5rem", textAlign: "center", color: "var(--text-muted)" }}>Loading...</div>;
+    return (
+      <div
+        className="container"
+        style={{
+          padding: "4rem 1.5rem",
+          textAlign: "center",
+          color: "var(--text-muted)",
+        }}
+      >
+        Loading...
+      </div>
+    );
   }
 
   return (
-    <div className="container" style={{ padding: "4rem 1.5rem", maxWidth: "680px" }}>
-      <div className="glass-card" style={{ padding: "2.5rem" }}>
-        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <div style={{
-            width: "3rem",
-            height: "3rem",
-            borderRadius: "12px",
-            background: "linear-gradient(135deg, #0284c7 0%, #4f46e5 100%)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            margin: "0 auto 1rem auto"
-          }}>
-            <PlusCircle size={24} color="#ffffff" />
+    <div
+      className="container"
+      style={{
+        padding: "4rem 1.5rem",
+        maxWidth: "680px",
+      }}
+    >
+      <div
+        className="glass-card"
+        style={{
+          padding: "2.5rem",
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            textAlign: "center",
+            marginBottom: "2rem",
+          }}
+        >
+          <div
+            style={{
+              width: "3rem",
+              height: "3rem",
+              borderRadius: "12px",
+              background:
+                "linear-gradient(135deg, #0284c7 0%, #4f46e5 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 1rem auto",
+            }}
+          >
+            <PlusCircle
+              size={24}
+              color="#ffffff"
+            />
           </div>
-          <h1 style={{ fontSize: "1.875rem", fontWeight: 800 }}>Upload Engineering Project</h1>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", marginTop: "0.25rem" }}>
-            Share your academic build or personal project with fellow engineering students
+
+          <h1
+            style={{
+              fontSize: "1.875rem",
+              fontWeight: 800,
+            }}
+          >
+            Upload Engineering Project
+          </h1>
+
+          <p
+            style={{
+              color: "var(--text-muted)",
+              fontSize: "0.875rem",
+              marginTop: "0.25rem",
+            }}
+          >
+            Share your academic build or personal project
+            with fellow engineering students
           </p>
         </div>
 
+        {/* Error message */}
         {error && (
-          <div style={{
-            background: "rgba(244, 63, 94, 0.12)",
-            border: "1px solid rgba(244, 63, 94, 0.3)",
-            color: "#fb7185",
-            padding: "0.75rem 1rem",
-            borderRadius: "8px",
-            fontSize: "0.875rem",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            marginBottom: "1.5rem"
-          }}>
+          <div
+            style={{
+              background: "rgba(244, 63, 94, 0.12)",
+              border:
+                "1px solid rgba(244, 63, 94, 0.3)",
+              color: "#fb7185",
+              padding: "0.75rem 1rem",
+              borderRadius: "8px",
+              fontSize: "0.875rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              marginBottom: "1.5rem",
+            }}
+          >
             <AlertCircle size={16} />
             <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "1.25rem",
+          }}
+        >
+          {/* Project Title */}
           <div>
-            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "0.4rem" }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                color: "var(--text-main)",
+                marginBottom: "0.4rem",
+              }}
+            >
               Project Title *
             </label>
+
             <input
               type="text"
               required
               className="input-field"
               placeholder="e.g. Autonomous Obstacle Avoidance Rover with ROS 2"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) =>
+                setTitle(e.target.value)
+              }
             />
           </div>
 
+          {/* Category */}
           <div>
-            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "0.4rem" }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                color: "var(--text-main)",
+                marginBottom: "0.4rem",
+              }}
+            >
               Engineering Category *
             </label>
+
             <select
               className="input-field"
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(e) =>
+                setCategory(e.target.value)
+              }
             >
               {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option
+                  key={cat}
+                  value={cat}
+                >
+                  {cat}
+                </option>
               ))}
             </select>
           </div>
 
+          {/* Technologies */}
           <div>
-            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "0.4rem" }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                color: "var(--text-main)",
+                marginBottom: "0.4rem",
+              }}
+            >
               Technologies & Tools Used * (Comma-separated)
             </label>
+
             <input
               type="text"
               required
               className="input-field"
               placeholder="e.g. C++, Arduino, ROS 2, OpenCV, SolidWorks"
               value={technologies}
-              onChange={(e) => setTechnologies(e.target.value)}
+              onChange={(e) =>
+                setTechnologies(e.target.value)
+              }
             />
-            <span style={{ fontSize: "0.75rem", color: "var(--text-subtle)", marginTop: "0.25rem", display: "block" }}>
-              These technologies will build your demonstrated experience profile automatically!
+
+            <span
+              style={{
+                fontSize: "0.75rem",
+                color: "var(--text-subtle)",
+                marginTop: "0.25rem",
+                display: "block",
+              }}
+            >
+              These technologies will build your
+              demonstrated experience profile automatically!
             </span>
           </div>
 
+          {/* Description */}
           <div>
-            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "0.4rem" }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                color: "var(--text-main)",
+                marginBottom: "0.4rem",
+              }}
+            >
               Project Description *
             </label>
+
             <textarea
               required
               rows={6}
               className="input-field"
               placeholder="Describe what your project does, hardware/software architecture, challenges solved, and key results..."
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              style={{ resize: "vertical" }}
+              onChange={(e) =>
+                setDescription(e.target.value)
+              }
+              style={{
+                resize: "vertical",
+              }}
             />
           </div>
 
+          {/* GitHub Link */}
           <div>
-            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "0.4rem" }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                color: "var(--text-main)",
+                marginBottom: "0.4rem",
+              }}
+            >
               GitHub Repository Link (Optional)
             </label>
+
             <input
               type="url"
               className="input-field"
               placeholder="https://github.com/username/project-repo"
               value={githubLink}
-              onChange={(e) => setGithubLink(e.target.value)}
+              onChange={(e) =>
+                setGithubLink(e.target.value)
+              }
             />
           </div>
 
+          {/* Demo Link */}
           <div>
-            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "0.4rem" }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                color: "var(--text-main)",
+                marginBottom: "0.4rem",
+              }}
+            >
               Live Demo / Video Link (Optional)
             </label>
+
             <input
               type="url"
               className="input-field"
               placeholder="https://youtube.com/watch?v=..."
               value={demoLink}
-              onChange={(e) => setDemoLink(e.target.value)}
+              onChange={(e) =>
+                setDemoLink(e.target.value)
+              }
             />
           </div>
 
+          {/* Submit */}
           <button
             type="submit"
             disabled={submitting}
             className="btn-primary"
-            style={{ width: "100%", justifyContent: "center", padding: "0.75rem", marginTop: "0.5rem" }}
+            style={{
+              width: "100%",
+              justifyContent: "center",
+              padding: "0.75rem",
+              marginTop: "0.5rem",
+            }}
           >
-            {submitting ? "Publishing Project..." : "Publish Project"}
+            {submitting
+              ? "Publishing Project..."
+              : "Publish Project"}
           </button>
         </form>
       </div>

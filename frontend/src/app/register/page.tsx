@@ -4,8 +4,8 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { UserPlus, Mail, Lock, Building2, User } from "lucide-react";
-
-import { apiFetch, setToken, User as UserType } from "@/lib/api";
+import { apiFetch, User as UserType } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 
 interface RegisterResponse {
   access_token: string;
@@ -15,6 +15,7 @@ interface RegisterResponse {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { login } = useAuth();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -40,7 +41,6 @@ export default function RegisterPage() {
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-
     setError("");
     setLoading(true);
 
@@ -56,9 +56,18 @@ export default function RegisterPage() {
         }),
       });
 
-      setToken(data.access_token);
+      // Convert the API user into the User type expected by AuthContext
+      login(data.access_token, {
+        id: data.user.id,
+        name: data.user.name || data.user.full_name || "",
+        email: data.user.email,
+        department: data.user.department,
+        bio: data.user.bio,
+        created_at: data.user.created_at,
+      });
 
-      router.push("/dashboard");
+      // First-time users go through onboarding
+      router.push("/onboarding");
     } catch (err: any) {
       console.error("Registration error:", err);
 
@@ -72,114 +81,44 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="container" style={{ padding: "4rem 1.5rem" }}>
-      <div
-        style={{
-          maxWidth: "520px",
-          margin: "0 auto",
-        }}
-      >
-        <div
-          className="glass-card"
-          style={{
-            padding: "2rem",
-          }}
-        >
+    <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-lg p-8">
           {/* Header */}
-          <div
-            style={{
-              textAlign: "center",
-              marginBottom: "2rem",
-            }}
-          >
-            <div
-              style={{
-                width: "56px",
-                height: "56px",
-                margin: "0 auto 1rem",
-                borderRadius: "14px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background:
-                  "linear-gradient(135deg, #2563eb 0%, #06b6d4 100%)",
-                color: "white",
-              }}
-            >
-              <UserPlus size={28} />
+          <div className="text-center mb-8">
+            <div className="mx-auto w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+              <UserPlus className="w-7 h-7 text-blue-600" />
             </div>
 
-            <h1
-              style={{
-                fontSize: "1.8rem",
-                fontWeight: 800,
-                marginBottom: "0.5rem",
-              }}
-            >
+            <h1 className="text-2xl font-bold text-gray-900">
               Create Your Account
             </h1>
 
-            <p
-              style={{
-                color: "var(--text-muted)",
-                fontSize: "0.9rem",
-              }}
-            >
-              Join ProjectForge and connect with your peers.
+            <p className="text-gray-500 mt-2">
+              Join ProjectForge and start collaborating
             </p>
           </div>
 
           {/* Error */}
           {error && (
-            <div
-              style={{
-                marginBottom: "1.25rem",
-                padding: "0.85rem 1rem",
-                borderRadius: "8px",
-                background: "rgba(244, 63, 94, 0.12)",
-                border: "1px solid rgba(244, 63, 94, 0.3)",
-                color: "#f87171",
-                fontSize: "0.875rem",
-              }}
-            >
+            <div className="mb-5 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
               {error}
             </div>
           )}
 
-          {/* Registration Form */}
-          <form
-            onSubmit={handleSubmit}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "1.1rem",
-            }}
-          >
-            {/* Full Name */}
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Name */}
             <div>
               <label
                 htmlFor="name"
-                style={{
-                  display: "block",
-                  marginBottom: "0.45rem",
-                  fontSize: "0.85rem",
-                  fontWeight: 600,
-                }}
+                className="block text-sm font-medium text-gray-700 mb-2"
               >
                 Full Name
               </label>
 
-              <div style={{ position: "relative" }}>
-                <User
-                  size={17}
-                  style={{
-                    position: "absolute",
-                    left: "0.85rem",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "var(--text-muted)",
-                  }}
-                />
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
 
                 <input
                   id="name"
@@ -189,15 +128,7 @@ export default function RegisterPage() {
                   onChange={handleChange}
                   required
                   placeholder="Enter your full name"
-                  style={{
-                    width: "100%",
-                    padding: "0.75rem 0.75rem 0.75rem 2.5rem",
-                    borderRadius: "8px",
-                    border: "1px solid var(--border-color)",
-                    background: "var(--bg-secondary)",
-                    color: "var(--text-main)",
-                    outline: "none",
-                  }}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -206,27 +137,13 @@ export default function RegisterPage() {
             <div>
               <label
                 htmlFor="email"
-                style={{
-                  display: "block",
-                  marginBottom: "0.45rem",
-                  fontSize: "0.85rem",
-                  fontWeight: 600,
-                }}
+                className="block text-sm font-medium text-gray-700 mb-2"
               >
                 Email
               </label>
 
-              <div style={{ position: "relative" }}>
-                <Mail
-                  size={17}
-                  style={{
-                    position: "absolute",
-                    left: "0.85rem",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "var(--text-muted)",
-                  }}
-                />
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
 
                 <input
                   id="email"
@@ -236,15 +153,7 @@ export default function RegisterPage() {
                   onChange={handleChange}
                   required
                   placeholder="Enter your email"
-                  style={{
-                    width: "100%",
-                    padding: "0.75rem 0.75rem 0.75rem 2.5rem",
-                    borderRadius: "8px",
-                    border: "1px solid var(--border-color)",
-                    background: "var(--bg-secondary)",
-                    color: "var(--text-main)",
-                    outline: "none",
-                  }}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -253,27 +162,13 @@ export default function RegisterPage() {
             <div>
               <label
                 htmlFor="password"
-                style={{
-                  display: "block",
-                  marginBottom: "0.45rem",
-                  fontSize: "0.85rem",
-                  fontWeight: 600,
-                }}
+                className="block text-sm font-medium text-gray-700 mb-2"
               >
                 Password
               </label>
 
-              <div style={{ position: "relative" }}>
-                <Lock
-                  size={17}
-                  style={{
-                    position: "absolute",
-                    left: "0.85rem",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "var(--text-muted)",
-                  }}
-                />
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
 
                 <input
                   id="password"
@@ -282,17 +177,8 @@ export default function RegisterPage() {
                   value={formData.password}
                   onChange={handleChange}
                   required
-                  minLength={6}
                   placeholder="Create a password"
-                  style={{
-                    width: "100%",
-                    padding: "0.75rem 0.75rem 0.75rem 2.5rem",
-                    borderRadius: "8px",
-                    border: "1px solid var(--border-color)",
-                    background: "var(--bg-secondary)",
-                    color: "var(--text-main)",
-                    outline: "none",
-                  }}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -301,27 +187,13 @@ export default function RegisterPage() {
             <div>
               <label
                 htmlFor="department"
-                style={{
-                  display: "block",
-                  marginBottom: "0.45rem",
-                  fontSize: "0.85rem",
-                  fontWeight: 600,
-                }}
+                className="block text-sm font-medium text-gray-700 mb-2"
               >
                 Department
               </label>
 
-              <div style={{ position: "relative" }}>
-                <Building2
-                  size={17}
-                  style={{
-                    position: "absolute",
-                    left: "0.85rem",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "var(--text-muted)",
-                  }}
-                />
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
 
                 <input
                   id="department"
@@ -329,17 +201,8 @@ export default function RegisterPage() {
                   type="text"
                   value={formData.department}
                   onChange={handleChange}
-                  required
-                  placeholder="e.g. ECE"
-                  style={{
-                    width: "100%",
-                    padding: "0.75rem 0.75rem 0.75rem 2.5rem",
-                    borderRadius: "8px",
-                    border: "1px solid var(--border-color)",
-                    background: "var(--bg-secondary)",
-                    color: "var(--text-main)",
-                    outline: "none",
-                  }}
+                  placeholder="e.g. Electrical & Computer Engineering"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -348,22 +211,9 @@ export default function RegisterPage() {
             <div>
               <label
                 htmlFor="bio"
-                style={{
-                  display: "block",
-                  marginBottom: "0.45rem",
-                  fontSize: "0.85rem",
-                  fontWeight: 600,
-                }}
+                className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Bio{" "}
-                <span
-                  style={{
-                    color: "var(--text-muted)",
-                    fontWeight: 400,
-                  }}
-                >
-                  (optional)
-                </span>
+                Bio
               </label>
 
               <textarea
@@ -372,59 +222,33 @@ export default function RegisterPage() {
                 value={formData.bio}
                 onChange={handleChange}
                 rows={3}
-                placeholder="Tell other students a little about yourself..."
-                style={{
-                  width: "100%",
-                  padding: "0.75rem",
-                  borderRadius: "8px",
-                  border: "1px solid var(--border-color)",
-                  background: "var(--bg-secondary)",
-                  color: "var(--text-main)",
-                  outline: "none",
-                  resize: "vertical",
-                }}
+                placeholder="Tell us a little about yourself..."
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               />
             </div>
 
-            {/* Submit Button */}
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary"
-              style={{
-                width: "100%",
-                justifyContent: "center",
-                marginTop: "0.5rem",
-                opacity: loading ? 0.7 : 1,
-                cursor: loading ? "not-allowed" : "pointer",
-              }}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-3 rounded-lg transition-colors"
             >
               {loading ? "Creating Account..." : "Create Account"}
             </button>
           </form>
 
-          {/* Login Link */}
-          <div
-            style={{
-              textAlign: "center",
-              marginTop: "1.5rem",
-              fontSize: "0.9rem",
-              color: "var(--text-muted)",
-            }}
-          >
+          {/* Login link */}
+          <p className="text-center text-sm text-gray-500 mt-6">
             Already have an account?{" "}
             <Link
               href="/login"
-              style={{
-                color: "var(--primary-cyan)",
-                fontWeight: 600,
-              }}
+              className="text-blue-600 hover:text-blue-700 font-semibold"
             >
-              Sign In
+              Log in
             </Link>
-          </div>
+          </p>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

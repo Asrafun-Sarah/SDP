@@ -43,13 +43,11 @@ export const AuthProvider = ({
   children: React.ReactNode;
 }) => {
   const [user, setUser] = useState<User | null>(null);
-
   const [token, setToken] = useState<string | null>(null);
-
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem("pf_token");
+    const savedToken = localStorage.getItem("access_token");
     const savedUser = localStorage.getItem("pf_user");
 
     if (savedToken) {
@@ -72,18 +70,15 @@ export const AuthProvider = ({
     setToken(newToken);
     setUser(newUser);
 
-    localStorage.setItem("pf_token", newToken);
-    localStorage.setItem(
-      "pf_user",
-      JSON.stringify(newUser)
-    );
+    localStorage.setItem("access_token", newToken);
+    localStorage.setItem("pf_user", JSON.stringify(newUser));
   };
 
   const logout = () => {
     setToken(null);
     setUser(null);
 
-    localStorage.removeItem("pf_token");
+    localStorage.removeItem("access_token");
     localStorage.removeItem("pf_user");
   };
 
@@ -91,9 +86,7 @@ export const AuthProvider = ({
     if (!token) return;
 
     try {
-      const updatedUser = await apiFetch<User>(
-        "/api/auth/me"
-      );
+      const updatedUser = await apiFetch<User>("/auth/me");
 
       setUser(updatedUser);
 
@@ -122,5 +115,4 @@ export const AuthProvider = ({
   );
 };
 
-export const useAuth = () =>
-  useContext(AuthContext);
+export const useAuth = () => useContext(AuthContext);
