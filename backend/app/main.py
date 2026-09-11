@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .database import Base, engine
+
 from .routers import (
     auth,
     projects,
@@ -10,6 +12,10 @@ from .routers import (
     users_router,
     messages,
 )
+
+# Create any missing database tables.
+# Existing tables and data are not deleted.
+Base.metadata.create_all(bind=engine)
 
 
 app = FastAPI(
