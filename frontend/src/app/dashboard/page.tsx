@@ -16,6 +16,7 @@ import {
   Inbox,
   Send,
   RefreshCw,
+  MessageCircle,
 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth-context";
@@ -62,6 +63,33 @@ interface HelpRequest {
   } | null;
 }
 
+interface StudentRequest {
+  id: number;
+  sender_id: number;
+  receiver_id: number;
+  message: string;
+  status: string;
+  created_at: string;
+  sender: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  receiver: {
+    id: number;
+    name: string;
+    email: string;
+  };
+}
+
+interface Message {
+  id: number;
+  sender_id: number;
+  receiver_id: number;
+  content: string;
+  created_at: string;
+}
+
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -69,6 +97,12 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentProjects, setRecentProjects] = useState<Project[]>([]);
   const [requestActivity, setRequestActivity] = useState<HelpRequest[]>([]);
+  const [studentRequests, setStudentRequests] = useState<StudentRequest[]>(
+    []
+  );
+  const [latestMessages, setLatestMessages] = useState<
+    Record<number, string>
+  >({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -86,19 +120,153 @@ export default function DashboardPage() {
     try {
       setLoading(true);
 
-      const [statsData, projectsData, requestsData] = await Promise.all([
+      const [
+        statsData,
+        projectsData,
+        requestsData,
+        receivedStudentRequests,
+        sentStudentRequests,
+      ] = await Promise.all([
         apiFetch<DashboardStats>("/dashboard/stats"),
         apiFetch<Project[]>("/dashboard/recent-projects"),
         apiFetch<HelpRequest[]>("/dashboard/request-activity"),
+        apiFetch<StudentRequest[]>("/student-requests/received"),
+        apiFetch<StudentRequest[]>("/student-requests/sent"),
       ]);
 
       setStats(statsData);
       setRecentProjects(projectsData);
       setRequestActivity(requestsData);
+
+      /*
+       * Combine received and sent student requests.
+       *
+       * This makes the connection visible on both students'
+       * dashboards after the request has been accepted.
+       */
+      const allRequests = [
+        ...receivedStudentRequests,
+        ...sentStudentRequests,
+      ];
+
+      /*
+       * Remove duplicates in case the same request appears
+       * more than once.
+       */
+      const uniqueRequests = Array.from(
+        new Map(
+          allRequests.map((request) => [
+            request.id,
+            request,
+          ])
+        ).values()
+      );
+
+      setStudentRequests(uniqueRequests);
+
+      /*
+       * Load the latest chat message for every accepted
+       * student connection.
+       */
+      const acceptedRequests = uniqueRequests.filter(
+        (request) => request.status === "Accepted"
+      );
+
+      const messageResults = await Promise.all(
+        acceptedRequests.map(async (request) => {
+          const otherStudentId =
+            request.sender_id === user?.id
+              ? request.receiver_id
+              : request.sender_id;
+
+          try {
+            const messages = await apiFetch<Message[]>(
+              `/messages/${otherStudentId}`
+            );
+
+            if (messages.length === 0) {
+              return {
+                studentId: otherStudentId,
+                message: "",
+              };
+            }
+
+            const latestMessage =
+              messages[messages.length - 1];
+
+            return {
+              studentId: otherStudentId,
+              message: latestMessage.content,
+            };
+          } catch (error) {
+            console.error(
+              "Failed to load latest message:",
+              error
+            );
+
+            return {
+              studentId: otherStudentId,
+              message: "",
+            };
+          }
+        })
+      );
+
+      const messageMap: Record<number, string> = {};
+
+      messageResults.forEach((result) => {
+        messageMap[result.studentId] = result.message;
+      });
+
+      setLatestMessages(messageMap);
     } catch (error) {
-      console.error("Failed to load dashboard:", error);
+      console.error(
+        "Failed to load dashboard:",
+        error
+      );
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleStudentRequest(
+    requestId: number,
+    action: "accept" | "decline"
+  ) {
+    try {
+      await apiFetch<StudentRequest>(
+        `/student-requests/${requestId}/${action}`,
+        {
+          method: "POST",
+        }
+      );
+
+      setStudentRequests((currentRequests) =>
+        currentRequests.map((request) =>
+          request.id === requestId
+            ? {
+                ...request,
+                status:
+                  action === "accept"
+                    ? "Accepted"
+                    : "Declined",
+              }
+            : request
+        )
+      );
+
+      /*
+       * Reload dashboard so that an accepted request
+       * immediately loads its latest chat message.
+       */
+      if (action === "accept") {
+        await loadDashboard();
+      }
+    } catch (error) {
+      console.error(
+        `Failed to ${action} student request:`,
+        error
+      );
     }
   }
 
@@ -115,23 +283,35 @@ export default function DashboardPage() {
   }
 
   function getStatusClass(status: string) {
-    if (status === "Accepted") return "status accepted";
-    if (status === "Declined") return "status declined";
+    if (status === "Accepted") {
+      return "status accepted";
+    }
+
+    if (status === "Declined") {
+      return "status declined";
+    }
+
     return "status pending";
   }
 
   function formatDate(date: string) {
-    return new Date(date).toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+    return new Date(date).toLocaleDateString(
+      undefined,
+      {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }
+    );
   }
 
   if (authLoading || !user) {
     return (
       <main className="dashboard-loading">
-        <RefreshCw size={24} className="loading-icon" />
+        <RefreshCw
+          size={24}
+          className="loading-icon"
+        />
         <p>Loading dashboard...</p>
       </main>
     );
@@ -144,25 +324,34 @@ export default function DashboardPage() {
         {/* Welcome Section */}
         <section className="welcome-section">
           <div className="welcome-content">
-            <p className="welcome-label">Student Dashboard</p>
+            <p className="welcome-label">
+              Student Dashboard
+            </p>
 
             <h1>
               Welcome back, <span>{user.name}</span>
             </h1>
 
             <p className="welcome-description">
-              {user.department} • Manage your projects, discover engineering
-              work, and stay connected with your peers.
+              {user.department} • Manage your projects,
+              discover engineering work, and stay connected
+              with your peers.
             </p>
           </div>
 
           <div className="welcome-actions">
-            <Link href="/projects/upload" className="primary-action">
+            <Link
+              href="/projects/upload"
+              className="primary-action"
+            >
               <Upload size={17} />
               Upload Project
             </Link>
 
-            <Link href="/projects" className="secondary-action">
+            <Link
+              href="/projects"
+              className="secondary-action"
+            >
               <Search size={17} />
               Browse Projects
             </Link>
@@ -179,8 +368,11 @@ export default function DashboardPage() {
 
             <div className="stat-content">
               <p>My Projects</p>
+
               <strong>
-                {loading ? "—" : stats?.uploaded_projects_count ?? 0}
+                {loading
+                  ? "—"
+                  : stats?.uploaded_projects_count ?? 0}
               </strong>
             </div>
           </div>
@@ -192,8 +384,11 @@ export default function DashboardPage() {
 
             <div className="stat-content">
               <p>Requests Sent</p>
+
               <strong>
-                {loading ? "—" : stats?.sent_requests_count ?? 0}
+                {loading
+                  ? "—"
+                  : stats?.sent_requests_count ?? 0}
               </strong>
             </div>
           </div>
@@ -205,8 +400,11 @@ export default function DashboardPage() {
 
             <div className="stat-content">
               <p>Requests Received</p>
+
               <strong>
-                {loading ? "—" : stats?.received_requests_count ?? 0}
+                {loading
+                  ? "—"
+                  : stats?.received_requests_count ?? 0}
               </strong>
             </div>
           </div>
@@ -218,8 +416,11 @@ export default function DashboardPage() {
 
             <div className="stat-content">
               <p>Pending Requests</p>
+
               <strong>
-                {loading ? "—" : stats?.pending_requests_count ?? 0}
+                {loading
+                  ? "—"
+                  : stats?.pending_requests_count ?? 0}
               </strong>
             </div>
           </div>
@@ -233,11 +434,17 @@ export default function DashboardPage() {
           <div className="dashboard-card projects-card">
             <div className="card-header">
               <div>
-                <p className="section-kicker">Your work</p>
+                <p className="section-kicker">
+                  Your work
+                </p>
+
                 <h2>Recent Projects</h2>
               </div>
 
-              <Link href="/projects/my-projects" className="view-all">
+              <Link
+                href="/projects/my-projects"
+                className="view-all"
+              >
                 View all
                 <ArrowRight size={15} />
               </Link>
@@ -245,7 +452,11 @@ export default function DashboardPage() {
 
             {loading ? (
               <div className="empty-state">
-                <RefreshCw size={22} className="loading-icon" />
+                <RefreshCw
+                  size={22}
+                  className="loading-icon"
+                />
+
                 <p>Loading projects...</p>
               </div>
             ) : recentProjects.length === 0 ? (
@@ -255,48 +466,62 @@ export default function DashboardPage() {
                 <h3>No projects yet</h3>
 
                 <p>
-                  Share your first engineering project with the ProjectForge
-                  community.
+                  Share your first engineering project
+                  with the ProjectForge community.
                 </p>
 
-                <Link href="/projects/upload" className="small-action">
+                <Link
+                  href="/projects/upload"
+                  className="small-action"
+                >
                   Upload your first project
                   <ArrowRight size={15} />
                 </Link>
               </div>
             ) : (
               <div className="project-list">
-                {recentProjects.map((project, index) => (
-                  <Link
-                    href={`/projects/${project.id}`}
-                    key={project.id}
-                    className={`project-item project-item-${index % 3}`}
-                  >
-                    <div className="project-item-main">
+                {recentProjects.map(
+                  (project, index) => (
+                    <Link
+                      href={`/projects/${project.id}`}
+                      key={project.id}
+                      className={`project-item project-item-${
+                        index % 3
+                      }`}
+                    >
+                      <div className="project-item-main">
 
-                      <span className="project-category">
-                        {project.category}
-                      </span>
+                        <span className="project-category">
+                          {project.category}
+                        </span>
 
-                      <h3>{project.title}</h3>
+                        <h3>{project.title}</h3>
 
-                      <p>
-                        {project.description.length > 110
-                          ? `${project.description.slice(0, 110)}...`
-                          : project.description}
-                      </p>
+                        <p>
+                          {project.description.length >
+                          110
+                            ? `${project.description.slice(
+                                0,
+                                110
+                              )}...`
+                            : project.description}
+                        </p>
 
-                      <div className="project-tech">
-                        {project.tech_stack}
+                        <div className="project-tech">
+                          {project.tech_stack}
+                        </div>
+
                       </div>
 
-                    </div>
-
-                    <div className="project-arrow-box">
-                      <ArrowRight size={18} className="project-arrow" />
-                    </div>
-                  </Link>
-                ))}
+                      <div className="project-arrow-box">
+                        <ArrowRight
+                          size={18}
+                          className="project-arrow"
+                        />
+                      </div>
+                    </Link>
+                  )
+                )}
               </div>
             )}
           </div>
@@ -306,7 +531,10 @@ export default function DashboardPage() {
 
             <div className="card-header">
               <div>
-                <p className="section-kicker">Shortcuts</p>
+                <p className="section-kicker">
+                  Shortcuts
+                </p>
+
                 <h2>Quick Actions</h2>
               </div>
             </div>
@@ -323,7 +551,9 @@ export default function DashboardPage() {
 
                 <div>
                   <strong>Upload Project</strong>
-                  <span>Share your latest work</span>
+                  <span>
+                    Share your latest work
+                  </span>
                 </div>
 
                 <ArrowRight size={16} />
@@ -339,7 +569,9 @@ export default function DashboardPage() {
 
                 <div>
                   <strong>My Projects</strong>
-                  <span>Manage your projects</span>
+                  <span>
+                    Manage your projects
+                  </span>
                 </div>
 
                 <ArrowRight size={16} />
@@ -355,7 +587,9 @@ export default function DashboardPage() {
 
                 <div>
                   <strong>Browse Projects</strong>
-                  <span>Discover student work</span>
+                  <span>
+                    Discover student work
+                  </span>
                 </div>
 
                 <ArrowRight size={16} />
@@ -371,7 +605,9 @@ export default function DashboardPage() {
 
                 <div>
                   <strong>My Profile</strong>
-                  <span>Update your information</span>
+                  <span>
+                    Update your information
+                  </span>
                 </div>
 
                 <ArrowRight size={16} />
@@ -382,19 +618,276 @@ export default function DashboardPage() {
 
         </section>
 
+        {/* Student Connection Requests */}
+        <section className="dashboard-card activity-card">
+
+          <div className="card-header">
+            <div>
+              <p className="section-kicker">
+                Student Network
+              </p>
+
+              <h2>Connection Requests</h2>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="empty-state">
+              <RefreshCw
+                size={22}
+                className="loading-icon"
+              />
+
+              <p>Loading requests...</p>
+            </div>
+          ) : studentRequests.length === 0 ? (
+            <div className="empty-state compact">
+              <Inbox size={28} />
+
+              <h3>No connection requests</h3>
+
+              <p>
+                Requests from other students will appear
+                here.
+              </p>
+            </div>
+          ) : (
+            <div className="activity-list">
+
+              {studentRequests.map((request) => {
+
+                const isReceived =
+                  request.receiver_id === user.id;
+
+                const otherStudent =
+                  isReceived
+                    ? request.sender
+                    : request.receiver;
+
+                const latestMessage =
+                  latestMessages[otherStudent.id] ||
+                  "";
+
+                return (
+                  <div
+                    className="activity-item"
+                    key={request.id}
+                  >
+
+                    <div
+                      className={`activity-icon ${
+                        isReceived
+                          ? "activity-received"
+                          : "activity-sent"
+                      }`}
+                    >
+                      {isReceived ? (
+                        <Inbox size={17} />
+                      ) : (
+                        <Send size={17} />
+                      )}
+                    </div>
+
+                    <div className="activity-content">
+
+                      <div className="activity-title-row">
+                        <h3>
+                          {isReceived
+                            ? `${otherStudent.name} wants to connect`
+                            : `You sent a connection request to ${otherStudent.name}`}
+                        </h3>
+
+                        <span
+                          className={getStatusClass(
+                            request.status
+                          )}
+                        >
+                          {getStatusIcon(
+                            request.status
+                          )}
+
+                          {request.status}
+                        </span>
+                      </div>
+
+                      <p
+                        style={{
+                          marginTop: "0.55rem",
+                          color: "var(--text-main)",
+                          lineHeight: 1.55,
+                        }}
+                      >
+                        "{request.message}"
+                      </p>
+
+                      <p
+                        style={{
+                          marginTop: "0.4rem",
+                        }}
+                      >
+                        {otherStudent.email} •{" "}
+                        {formatDate(
+                          request.created_at
+                        )}
+                      </p>
+
+                      {/* Pending Request Actions */}
+                      {request.status ===
+                        "Pending" &&
+                        isReceived && (
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "0.6rem",
+                              marginTop: "0.8rem",
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleStudentRequest(
+                                  request.id,
+                                  "accept"
+                                )
+                              }
+                              className="primary-action"
+                              style={{
+                                border: "none",
+                                cursor: "pointer",
+                                padding:
+                                  "0.55rem 0.8rem",
+                                fontSize: "0.78rem",
+                              }}
+                            >
+                              <CheckCircle2
+                                size={15}
+                              />
+
+                              Accept
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleStudentRequest(
+                                  request.id,
+                                  "decline"
+                                )
+                              }
+                              className="secondary-action"
+                              style={{
+                                cursor: "pointer",
+                                padding:
+                                  "0.55rem 0.8rem",
+                                fontSize: "0.78rem",
+                              }}
+                            >
+                              <XCircle
+                                size={15}
+                              />
+
+                              Decline
+                            </button>
+                          </div>
+                        )}
+
+                      {/* Accepted Connection */}
+                      {request.status ===
+                        "Accepted" && (
+                        <>
+                          {latestMessage && (
+                            <div
+                              style={{
+                                marginTop: "0.75rem",
+                                padding:
+                                  "0.7rem 0.85rem",
+                                borderRadius: "10px",
+                                background:
+                                  "rgba(56, 189, 248, 0.05)",
+                                border:
+                                  "1px solid var(--border-color)",
+                              }}
+                            >
+                              <p
+                                style={{
+                                  margin: 0,
+                                  color:
+                                    "var(--text-muted)",
+                                  fontSize: "0.76rem",
+                                }}
+                              >
+                                <strong
+                                  style={{
+                                    color:
+                                      "var(--primary-cyan)",
+                                  }}
+                                >
+                                  Latest message:
+                                </strong>{" "}
+                                {latestMessage}
+                              </p>
+                            </div>
+                          )}
+
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "0.6rem",
+                              marginTop: "0.8rem",
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            <Link
+                              href={`/messages/${otherStudent.id}`}
+                              className="primary-action"
+                              style={{
+                                padding:
+                                  "0.55rem 0.8rem",
+                                fontSize: "0.78rem",
+                              }}
+                            >
+                              <MessageCircle
+                                size={15}
+                              />
+
+                              Continue Chat
+                            </Link>
+                          </div>
+                        </>
+                      )}
+
+                    </div>
+
+                  </div>
+                );
+              })}
+
+            </div>
+          )}
+
+        </section>
+
         {/* Request Activity */}
         <section className="dashboard-card activity-card">
 
           <div className="card-header">
             <div>
-              <p className="section-kicker">Collaboration</p>
+              <p className="section-kicker">
+                Collaboration
+              </p>
+
               <h2>Recent Request Activity</h2>
             </div>
           </div>
 
           {loading ? (
             <div className="empty-state">
-              <RefreshCw size={22} className="loading-icon" />
+              <RefreshCw
+                size={22}
+                className="loading-icon"
+              />
+
               <p>Loading activity...</p>
             </div>
           ) : requestActivity.length === 0 ? (
@@ -404,21 +897,28 @@ export default function DashboardPage() {
               <h3>No request activity yet</h3>
 
               <p>
-                Help requests connected to your projects will appear here.
+                Help requests connected to your
+                projects will appear here.
               </p>
             </div>
           ) : (
             <div className="activity-list">
 
               {requestActivity.map((request) => {
-                const isSent = request.user_id === user.id;
+                const isSent =
+                  request.user_id === user.id;
 
                 return (
-                  <div className="activity-item" key={request.id}>
+                  <div
+                    className="activity-item"
+                    key={request.id}
+                  >
 
                     <div
                       className={`activity-icon ${
-                        isSent ? "activity-sent" : "activity-received"
+                        isSent
+                          ? "activity-sent"
+                          : "activity-received"
                       }`}
                     >
                       {isSent ? (
@@ -433,8 +933,15 @@ export default function DashboardPage() {
                       <div className="activity-title-row">
                         <h3>{request.title}</h3>
 
-                        <span className={getStatusClass(request.status)}>
-                          {getStatusIcon(request.status)}
+                        <span
+                          className={getStatusClass(
+                            request.status
+                          )}
+                        >
+                          {getStatusIcon(
+                            request.status
+                          )}
+
                           {request.status}
                         </span>
                       </div>
@@ -752,7 +1259,8 @@ export default function DashboardPage() {
 
         .stat-cyan:hover {
           border-color: rgba(56, 189, 248, 0.55);
-          box-shadow: 0 10px 30px rgba(56, 189, 248, 0.10);
+          box-shadow:
+            0 10px 30px rgba(56, 189, 248, 0.10);
         }
 
         .stat-cyan::after {
@@ -765,7 +1273,8 @@ export default function DashboardPage() {
 
         .stat-purple:hover {
           border-color: rgba(192, 132, 252, 0.55);
-          box-shadow: 0 10px 30px rgba(192, 132, 252, 0.10);
+          box-shadow:
+            0 10px 30px rgba(192, 132, 252, 0.10);
         }
 
         .stat-purple::after {
@@ -778,7 +1287,8 @@ export default function DashboardPage() {
 
         .stat-emerald:hover {
           border-color: rgba(52, 211, 153, 0.55);
-          box-shadow: 0 10px 30px rgba(52, 211, 153, 0.10);
+          box-shadow:
+            0 10px 30px rgba(52, 211, 153, 0.10);
         }
 
         .stat-emerald::after {
@@ -791,7 +1301,8 @@ export default function DashboardPage() {
 
         .stat-amber:hover {
           border-color: rgba(251, 191, 36, 0.55);
-          box-shadow: 0 10px 30px rgba(251, 191, 36, 0.10);
+          box-shadow:
+            0 10px 30px rgba(251, 191, 36, 0.10);
         }
 
         .stat-amber::after {

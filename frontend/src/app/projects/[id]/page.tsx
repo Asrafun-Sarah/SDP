@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -41,6 +40,7 @@ export default function ProjectDetailsPage() {
     async function fetchDetails() {
       try {
         setLoading(true);
+        setError(null);
 
         const data = await apiFetch<Project>(
           `/projects/${projectId}`
@@ -152,116 +152,6 @@ export default function ProjectDetailsPage() {
     );
   }
 
-  /*
-   * The current seeded projects with IDs 1 and 2
-   * are demo projects used to preview ProjectForge.
-   */
-  const isDemoProject =
-    project.id === 1 || project.id === 2;
-
-  if (isDemoProject) {
-    return (
-      <div
-        className="container"
-        style={{
-          padding: "5rem 1.5rem",
-          maxWidth: "700px",
-          textAlign: "center",
-        }}
-      >
-        <div
-          className="glass-card"
-          style={{
-            padding: "2.5rem",
-          }}
-        >
-          <div
-            style={{
-              width: "64px",
-              height: "64px",
-              margin: "0 auto 1.5rem",
-              borderRadius: "18px",
-              display: "grid",
-              placeItems: "center",
-              background:
-                "linear-gradient(135deg, rgba(74, 121, 255, 0.2), rgba(126, 85, 232, 0.2))",
-              border:
-                "1px solid rgba(113, 137, 255, 0.25)",
-            }}
-          >
-            <HelpCircle
-              size={28}
-              color="#8295ff"
-            />
-          </div>
-
-          <h2
-            style={{
-              fontSize: "1.6rem",
-              fontWeight: 800,
-              marginBottom: "0.75rem",
-            }}
-          >
-            Demo Project
-          </h2>
-
-          <p
-            style={{
-              color: "var(--text-muted)",
-              fontSize: "0.95rem",
-              lineHeight: 1.7,
-              marginBottom: "1.75rem",
-            }}
-          >
-            This is a demo project shown for preview
-            purposes. Please log in or sign up with your
-            own account to view real project details and
-            connect with project authors.
-          </p>
-
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: "0.75rem",
-              flexWrap: "wrap",
-            }}
-          >
-            <Link
-              href="/login"
-              className="btn-primary"
-            >
-              Log In
-            </Link>
-
-            <Link
-              href="/register"
-              className="btn-secondary"
-            >
-              Sign Up
-            </Link>
-          </div>
-
-          <div
-            style={{
-              marginTop: "1.5rem",
-            }}
-          >
-            <Link
-              href="/projects"
-              style={{
-                color: "var(--text-muted)",
-                fontSize: "0.85rem",
-              }}
-            >
-              ← Back to Projects
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const projectOwner =
     project.owner || project.author;
 
@@ -300,12 +190,11 @@ export default function ProjectDetailsPage() {
     project.demo_link ||
     project.demo_url;
 
+  // Compare the logged-in user's ID with the project owner's ID.
+  // This identifies whether the current project belongs to the logged-in user.
   const isOwnProject =
-    user &&
-    user.id === (
-      project.author_id ??
-      project.user_id
-    );
+    !!user &&
+    Number(user.id) === Number(authorId);
 
   return (
     <div
@@ -597,7 +486,11 @@ export default function ProjectDetailsPage() {
 
             {authorId && (
               <Link
-                href={`/profile/${authorId}`}
+                href={
+                  isOwnProject
+                    ? "/profile"
+                    : `/profile/${authorId}`
+                }
                 className="btn-secondary"
                 style={{
                   width: "100%",

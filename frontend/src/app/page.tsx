@@ -2,10 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 import { apiFetch } from "@/lib/api";
-import { useAuth } from "@/lib/auth-context";
 import { ProjectCard, Project } from "@/components/ProjectCard";
 
 import {
@@ -21,18 +19,8 @@ import {
 } from "lucide-react";
 
 export default function LandingPage() {
-  const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
-
   const [featuredProjects, setFeaturedProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Redirect logged-in users to the dashboard
-  useEffect(() => {
-    if (!authLoading && user) {
-      router.replace("/dashboard");
-    }
-  }, [user, authLoading, router]);
 
   // Load featured projects
   useEffect(() => {

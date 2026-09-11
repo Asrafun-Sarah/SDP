@@ -2,7 +2,11 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 
+
+# =========================
 # User Schemas
+# =========================
+
 class UserCreate(BaseModel):
     name: str
     email: str
@@ -11,15 +15,18 @@ class UserCreate(BaseModel):
     bio: Optional[str] = None
     demonstrated_skills: Optional[str] = "C++, Python, Arduino, Circuit Design"
 
+
 class UserLogin(BaseModel):
     email: str
     password: str
+
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     department: Optional[str] = None
     bio: Optional[str] = None
     demonstrated_skills: Optional[str] = None
+
 
 class UserOut(BaseModel):
     id: int
@@ -33,12 +40,37 @@ class UserOut(BaseModel):
     class Config:
         from_attributes = True
 
+
 class Token(BaseModel):
     access_token: str
     token_type: str
     user: UserOut
 
+
+# =========================
+# Public Student Profile Schemas
+# =========================
+
+class DemonstratedSkill(BaseModel):
+    technology: str
+    project_count: int
+
+
+class UserPublicProfile(BaseModel):
+    id: int
+    full_name: str
+    email: str
+    department: str
+    bio: Optional[str] = None
+    created_at: datetime
+    projects_count: int
+    demonstrated_skills: List[DemonstratedSkill]
+
+
+# =========================
 # Project Schemas
+# =========================
+
 class ProjectCreate(BaseModel):
     title: str
     description: str
@@ -46,6 +78,7 @@ class ProjectCreate(BaseModel):
     tech_stack: str
     github_url: Optional[str] = None
     demo_url: Optional[str] = None
+
 
 class ProjectOut(BaseModel):
     id: int
@@ -62,12 +95,17 @@ class ProjectOut(BaseModel):
     class Config:
         from_attributes = True
 
+
+# =========================
 # Help Request Schemas
+# =========================
+
 class HelpRequestCreate(BaseModel):
     title: str
     description: str
     category: Optional[str] = "Circuit Design"
     project_id: Optional[int] = None
+
 
 class HelpRequestOut(BaseModel):
     id: int
@@ -81,6 +119,51 @@ class HelpRequestOut(BaseModel):
     created_at: datetime
     author: UserOut
     helper: Optional[UserOut] = None
+
+    class Config:
+        from_attributes = True
+
+
+# =========================
+# Student Request Schemas
+# =========================
+
+class StudentRequestCreate(BaseModel):
+    receiver_id: int
+    message: str
+
+
+class StudentRequestOut(BaseModel):
+    id: int
+    sender_id: int
+    receiver_id: int
+    message: str
+    status: str
+    created_at: datetime
+    sender: UserOut
+    receiver: UserOut
+
+    class Config:
+        from_attributes = True
+
+
+# =========================
+# Student Message Schemas
+# =========================
+
+class MessageCreate(BaseModel):
+    receiver_id: int
+    content: str
+
+
+class MessageOut(BaseModel):
+    id: int
+    sender_id: int
+    receiver_id: int
+    content: str
+    created_at: datetime
+    sender: UserOut
+    receiver: UserOut
 
     class Config:
         from_attributes = True

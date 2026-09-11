@@ -37,7 +37,6 @@ def register(
     db: Session = Depends(get_db)
 ):
 
-    # Check whether email already exists
     existing_user = (
         db.query(User)
         .filter(User.email == user_data.email)
@@ -50,12 +49,10 @@ def register(
             detail="Email is already registered"
         )
 
-    # Hash password
     hashed_password = get_password_hash(
         user_data.password
     )
 
-    # Create user
     new_user = User(
         name=user_data.name,
         email=user_data.email,
@@ -78,7 +75,6 @@ def register(
     db.commit()
     db.refresh(new_user)
 
-    # Create JWT
     access_token = create_access_token(
         data={"sub": new_user.email}
     )
@@ -99,14 +95,12 @@ def login(
     db: Session = Depends(get_db)
 ):
 
-    # Find user by email
     user = (
         db.query(User)
         .filter(User.email == user_data.email)
         .first()
     )
 
-    # User doesn't exist
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -116,7 +110,6 @@ def login(
             }
         )
 
-    # Check password
     if not verify_password(
         user_data.password,
         user.hashed_password
@@ -129,7 +122,6 @@ def login(
             }
         )
 
-    # Generate JWT
     access_token = create_access_token(
         data={"sub": user.email}
     )

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Search, ArrowRight, FolderOpen } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import StudentSearch from "@/components/StudentSearch";
 
 interface ProjectOwner {
   id: number;
@@ -216,6 +217,9 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      {/* Find Students */}
+      <StudentSearch />
 
       {/* Results */}
       {loading ? (
